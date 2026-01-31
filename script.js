@@ -12,14 +12,23 @@ let isRunning = false;
 window.onload = () => {
     renderMasterList();
     updateTimerDisplay();
+    updateDrawButton(); // 初回表示時の人数更新
 };
 
 // ==========================================
-// 2. メンバー管理・ベース登録機能
+// 2. メンバー管理機能
 // ==========================================
 
 function saveToLocalStorage() {
     localStorage.setItem('badmintonMembers', JSON.stringify(members));
+}
+
+// 組み合わせ作成ボタンのテキスト（人数）を更新
+function updateDrawButton() {
+    const btn = document.getElementById('drawBtn');
+    if (btn) {
+        btn.innerText = `組み合わせ作成！（${members.length}名）`;
+    }
 }
 
 function addMember() {
@@ -30,6 +39,7 @@ function addMember() {
         input.value = '';
         saveToLocalStorage();
         renderMasterList();
+        updateDrawButton(); // 人数更新
     }
 }
 
@@ -45,42 +55,33 @@ function renderMasterList() {
             members = members.filter(m => m !== name);
             saveToLocalStorage();
             renderMasterList();
+            updateDrawButton(); // 削除時の人数更新
         };
         listDiv.appendChild(chip);
     });
 }
 
-// 【登録ボタン】
 function registerBaseMembers() {
-    if (members.length === 0) {
-        alert("登録するメンバーがリストにいません。名前を入力して追加してください。");
-        return;
-    }
-    
-    if (confirm("ベースメンバーを登録しますか？\n（現在のメンバーリストをベースメンバーとして保存します）")) {
-        localStorage.setItem('badmintonBaseMembers', JSON.stringify(members));
-        alert("現在のメンバー（" + members.length + "名）をベースメンバーとして登録しました！");
+    if (members.length === 0) { alert("登録するメンバーがリストにいません。"); return; }
+    if (confirm(`${members.length}名をベースメンバーとして登録しますか？\n（現在の登録は上書きされます）`)) {
+    localStorage.setItem('badmintonBaseMembers', JSON.stringify(members));
+    alert(members.length + "名をベースメンバーとして登録しました！");
     }
 }
 
-// 【適用ボタン】
 function applyBaseMembers() {
     const baseData = localStorage.getItem('badmintonBaseMembers');
-    
-    if (!baseData) {
-        alert("登録されているベースメンバーがありません。先に「登録」ボタンを押してください。");
-        return;
-    }
-
-    if (confirm("登録されているベースメンバーを読み込みますか？\n（現在のメンバーリストは上書きされます）")) {
+    if (!baseData) { alert("登録されているベースメンバーがいません。"); return; }
+    if (confirm("登録されているベースメンバーを読み込みますか？\n（現在のリストは上書きされます）")) {
         members = JSON.parse(baseData);
-        saveToLocalStorage(); // 現在のリストとして保存
-        renderMasterList();   // 画面を更新
+        saveToLocalStorage();
+        renderMasterList();
+        updateDrawButton();
     }
 }
 
 // ==========================================
-// 3. 組み合わせ・入れ替え機能
+// 3. 組み合わせ抽選・入れ替え
 // ==========================================
 
 function shuffle(array) {
@@ -93,19 +94,12 @@ function shuffle(array) {
 
 function drawMatches() {
     const courtCount = parseInt(document.querySelector('input[name="courtCount"]:checked').value);
-    if (members.length < 4) {
-        alert("メンバーが4人以上必要です。");
-        return;
-    }
-
+    if (members.length < 4) { alert("メンバーが4人以上必要です。"); return; }
     document.getElementById('instruction').style.display = 'block';
     let shuffled = shuffle([...members]);
-    
     currentMatchData.courts = [];
     for (let i = 0; i < courtCount; i++) {
-        if (shuffled.length >= 4) {
-            currentMatchData.courts.push(shuffled.splice(0, 4));
-        }
+        if (shuffled.length >= 4) { currentMatchData.courts.push(shuffled.splice(0, 4)); }
     }
     currentMatchData.waiting = shuffled;
     selectedInfo = null;
@@ -116,74 +110,49 @@ function renderMatchBoard() {
     const container = document.getElementById('courtsContainer');
     const waitingListDiv = document.getElementById('waitingList');
     const waitingRoom = document.getElementById('waitingRoom');
-    
     container.innerHTML = '';
     waitingListDiv.innerHTML = '';
-
     currentMatchData.courts.forEach((p, cIdx) => {
         const courtDiv = document.createElement('div');
         courtDiv.className = 'court-wrapper';
         courtDiv.innerHTML = `<div class="court-label">コート ${cIdx + 1}</div>`;
-        
-        const team1 = document.createElement('div');
-        team1.className = 'player-slot';
-        team1.appendChild(createPlayerButton(p[0], 'court', cIdx, 0));
-        team1.appendChild(createPlayerButton(p[1], 'court', cIdx, 1));
-        
-        const net = document.createElement('div');
-        net.className = 'net-line';
-        
-        const team2 = document.createElement('div');
-        team2.className = 'player-slot';
-        team2.appendChild(createPlayerButton(p[2], 'court', cIdx, 2));
-        team2.appendChild(createPlayerButton(p[3], 'court', cIdx, 3));
-
-        courtDiv.appendChild(team1);
-        courtDiv.appendChild(net);
-        courtDiv.appendChild(team2);
+        const t1 = document.createElement('div'); t1.className = 'player-slot';
+        t1.appendChild(createPlayerButton(p[0], 'court', cIdx, 0));
+        t1.appendChild(createPlayerButton(p[1], 'court', cIdx, 1));
+        const net = document.createElement('div'); net.className = 'net-line';
+        const t2 = document.createElement('div'); t2.className = 'player-slot';
+        t2.appendChild(createPlayerButton(p[2], 'court', cIdx, 2));
+        t2.appendChild(createPlayerButton(p[3], 'court', cIdx, 3));
+        courtDiv.appendChild(t1); courtDiv.appendChild(net); courtDiv.appendChild(t2);
         container.appendChild(courtDiv);
     });
-
     if (currentMatchData.waiting.length > 0) {
         waitingRoom.style.display = 'block';
         currentMatchData.waiting.forEach((name, pIdx) => {
             waitingListDiv.appendChild(createPlayerButton(name, 'waiting', null, pIdx));
         });
-    } else {
-        waitingRoom.style.display = 'none';
-    }
+    } else { waitingRoom.style.display = 'none'; }
 }
 
 function createPlayerButton(name, type, courtIdx, pIdx) {
     const btn = document.createElement('div');
     btn.className = 'member-chip';
     btn.innerText = name;
-    
     if (selectedInfo && selectedInfo.type === type && selectedInfo.courtIdx === courtIdx && selectedInfo.pIdx === pIdx) {
         btn.classList.add('selected');
     }
-
     btn.onclick = () => {
         if (!selectedInfo) {
             selectedInfo = { type, courtIdx, pIdx };
             renderMatchBoard();
         } else {
-            const src = selectedInfo;
-            const dest = { type, courtIdx, pIdx };
-
+            const src = selectedInfo; const dest = { type, courtIdx, pIdx };
             if (src.type === dest.type && src.courtIdx === dest.courtIdx && src.pIdx === dest.pIdx) {
-                selectedInfo = null;
-                renderMatchBoard();
-                return;
+                selectedInfo = null; renderMatchBoard(); return;
             }
-
-            let val1 = getValue(src);
-            let val2 = getValue(dest);
-            setValue(src, val2);
-            setValue(dest, val1);
-
-            selectedInfo = null;
-            renderMatchBoard();
+            let v1 = getValue(src); let v2 = getValue(dest);
+            setValue(src, v2); setValue(dest, v1);
+            selectedInfo = null; renderMatchBoard();
         }
     };
     return btn;
@@ -193,14 +162,13 @@ function getValue(info) {
     if (info.type === 'court') return currentMatchData.courts[info.courtIdx][info.pIdx];
     return currentMatchData.waiting[info.pIdx];
 }
-
 function setValue(info, val) {
     if (info.type === 'court') currentMatchData.courts[info.courtIdx][info.pIdx] = val;
     else currentMatchData.waiting[info.pIdx] = val;
 }
 
 // ==========================================
-// 4. タイマー機能
+// 4. タイマー機能（音声なし）
 // ==========================================
 
 function toggleTimerView() {
@@ -211,21 +179,14 @@ function toggleTimerView() {
 function updateTimerSetting() {
     const presets = document.getElementsByName('timePreset');
     const customInput = document.getElementById('customMin');
-    let selectedValue;
-
-    for (const r of presets) {
-        if (r.checked) {
-            selectedValue = r.value;
-            break;
-        }
-    }
-
-    if (selectedValue === 'custom') {
+    let val;
+    for (const r of presets) { if (r.checked) { val = r.value; break; } }
+    if (val === 'custom') {
         customInput.style.display = 'inline-block';
         timeLeft = parseInt(customInput.value) * 60;
     } else {
         customInput.style.display = 'none';
-        timeLeft = parseInt(selectedValue);
+        timeLeft = parseInt(val);
     }
     stopTimer();
     updateTimerDisplay();
@@ -264,10 +225,7 @@ function stopTimer() {
     clearInterval(timerInterval);
     isRunning = false;
     const btn = document.getElementById('startBtn');
-    if (btn) {
-        btn.innerText = "スタート";
-        btn.style.backgroundColor = "#00c853";
-    }
+    if (btn) { btn.innerText = "スタート"; btn.style.backgroundColor = "#00c853"; }
 }
 
 function resetTimer() {

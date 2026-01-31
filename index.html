@@ -10,10 +10,8 @@
 
     <div class="menu-container">
         <button class="btn-menu" onclick="toggleTimerView()">⏰ タイマー表示/非表示</button>
-        
         <div id="timerSection" class="timer-section" style="display: none;">
             <div id="timerDisplay" class="timer-display">01:00</div>
-            
             <div class="timer-options">
                 <label><input type="radio" name="timePreset" value="60" checked onchange="updateTimerSetting()"> 1分</label>
                 <label><input type="radio" name="timePreset" value="180" onchange="updateTimerSetting()"> 3分</label>
@@ -21,7 +19,6 @@
                 <label><input type="radio" name="timePreset" value="custom" onchange="updateTimerSetting()"> カスタム</label>
                 <input type="number" id="customMin" value="10" min="1" max="99" oninput="updateTimerSetting()" style="display:none; width: 50px;">
             </div>
-
             <div class="timer-controls">
                 <button id="startBtn" class="btn-start" onclick="toggleTimer()">スタート</button>
                 <button class="btn-reset" onclick="resetTimer()">リセット</button>
@@ -36,17 +33,14 @@
             <button class="btn-register" onclick="registerBaseMembers()">登録</button>
             <button class="btn-apply" onclick="applyBaseMembers()">適用</button>
         </div>
-
         <div id="memberList" class="member-list"></div>
-
         <div class="court-selection">
             <span>使用コート数:</span>
             <label><input type="radio" name="courtCount" value="1" checked> 1</label>
             <label><input type="radio" name="courtCount" value="2"> 2</label>
             <label><input type="radio" name="courtCount" value="3"> 3</label>
         </div>
-
-        <button class="btn-draw" onclick="drawMatches()">組み合わせ作成！</button>
+        <button id="drawBtn" class="btn-draw" onclick="drawMatches()">組み合わせ作成！（0名）</button>
     </div>
 
     <div id="instruction" class="info-text" style="display:none;">
