@@ -9,21 +9,40 @@ let timerInterval = null;
 let timeLeft = 60;
 let isRunning = false;
 
+// 音声ファイルの読み込み（ファイル名を合わせてください）
+const alarmAudio = new Audio('alarm.mp3'); 
+
 window.onload = () => {
     renderMasterList();
     updateTimerDisplay();
-    updateDrawButton(); // 初回表示時の人数更新
+    updateDrawButton();
 };
 
 // ==========================================
-// 2. メンバー管理機能
+// 2. 音声再生機能
 // ==========================================
+function playAlarm() {
+    alarmAudio.currentTime = 0; // 再生位置を先頭に戻す
+    alarmAudio.play().catch(e => console.log("オーディオ再生に失敗しました:", e));
 
+    // 10秒後に停止させる
+    setTimeout(() => {
+        stopAlarm();
+    }, 10000); 
+}
+
+function stopAlarm() {
+    alarmAudio.pause();
+    alarmAudio.currentTime = 0;
+}
+
+// ==========================================
+// 3. メンバー管理・ボタン人数更新
+// ==========================================
 function saveToLocalStorage() {
     localStorage.setItem('badmintonMembers', JSON.stringify(members));
 }
 
-// 組み合わせ作成ボタンのテキスト（人数）を更新
 function updateDrawButton() {
     const btn = document.getElementById('drawBtn');
     if (btn) {
@@ -39,7 +58,7 @@ function addMember() {
         input.value = '';
         saveToLocalStorage();
         renderMasterList();
-        updateDrawButton(); // 人数更新
+        updateDrawButton();
     }
 }
 
@@ -55,24 +74,24 @@ function renderMasterList() {
             members = members.filter(m => m !== name);
             saveToLocalStorage();
             renderMasterList();
-            updateDrawButton(); // 削除時の人数更新
+            updateDrawButton();
         };
         listDiv.appendChild(chip);
     });
 }
 
 function registerBaseMembers() {
-    if (members.length === 0) { alert("登録するメンバーがリストにいません。"); return; }
-    if (confirm(`${members.length}名をベースメンバーとして登録しますか？\n（現在の登録は上書きされます）`)) {
-    localStorage.setItem('badmintonBaseMembers', JSON.stringify(members));
-    alert(members.length + "名をベースメンバーとして登録しました！");
+    if (members.length === 0) { alert("登録するメンバーがいません。"); return; }
+    if (confirm("現在のメンバーを登録しますか？")) {
+        localStorage.setItem('badmintonBaseMembers', JSON.stringify(members));
+        alert(members.length + "名を登録しました！");
     }
 }
 
 function applyBaseMembers() {
     const baseData = localStorage.getItem('badmintonBaseMembers');
-    if (!baseData) { alert("登録されているベースメンバーがいません。"); return; }
-    if (confirm("登録されているベースメンバーを読み込みますか？\n（現在のリストは上書きされます）")) {
+    if (!baseData) { alert("登録がありません。"); return; }
+    if (confirm("登録したメンバーを適用しますか？")) {
         members = JSON.parse(baseData);
         saveToLocalStorage();
         renderMasterList();
@@ -81,9 +100,8 @@ function applyBaseMembers() {
 }
 
 // ==========================================
-// 3. 組み合わせ抽選・入れ替え
+// 4. 組み合わせ抽選・入れ替え
 // ==========================================
-
 function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -94,7 +112,7 @@ function shuffle(array) {
 
 function drawMatches() {
     const courtCount = parseInt(document.querySelector('input[name="courtCount"]:checked').value);
-    if (members.length < 4) { alert("メンバーが4人以上必要です。"); return; }
+    if (members.length < 4) { alert("4人以上必要です。"); return; }
     document.getElementById('instruction').style.display = 'block';
     let shuffled = shuffle([...members]);
     currentMatchData.courts = [];
@@ -168,9 +186,8 @@ function setValue(info, val) {
 }
 
 // ==========================================
-// 4. タイマー機能（音声なし）
+// 5. タイマー機能
 // ==========================================
-
 function toggleTimerView() {
     const section = document.getElementById('timerSection');
     section.style.display = (section.style.display === 'none') ? 'block' : 'none';
@@ -215,7 +232,8 @@ function toggleTimer() {
                 isRunning = false;
                 btn.innerText = "スタート";
                 btn.style.backgroundColor = "#00c853";
-                alert("時間になりました！");
+                
+                playAlarm(); // ここで音声を再生
             }
         }, 1000);
     }
@@ -226,6 +244,7 @@ function stopTimer() {
     isRunning = false;
     const btn = document.getElementById('startBtn');
     if (btn) { btn.innerText = "スタート"; btn.style.backgroundColor = "#00c853"; }
+    stopAlarm(); // タイマー停止時に音も止める
 }
 
 function resetTimer() {
