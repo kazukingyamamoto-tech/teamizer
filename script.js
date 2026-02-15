@@ -11,6 +11,9 @@ let timerInterval = null;
 let timeLeft = 60;
 let isRunning = false;
 
+// ★追加：スリープ防止用変数
+let wakeLock = null;
+
 const alarmAudio = new Audio('alarm.mp3'); 
 
 window.onload = () => {
@@ -20,7 +23,37 @@ window.onload = () => {
 };
 
 // ==========================================
-// 2. 音声再生機能
+// 2. スリープ防止機能 (Screen Wake Lock API) ★追加部分
+// ==========================================
+async function requestWakeLock() {
+    try {
+        // ブラウザが対応しているか確認
+        if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            console.log('スリープ防止モード: ON');
+        }
+    } catch (err) {
+        console.error(`スリープ防止エラー: ${err.name}, ${err.message}`);
+    }
+}
+
+async function releaseWakeLock() {
+    if (wakeLock !== null) {
+        await wakeLock.release();
+        wakeLock = null;
+        console.log('スリープ防止モード: OFF');
+    }
+}
+
+// アプリがバックグラウンドから復帰した時にロックを再取得する処理
+document.addEventListener('visibilitychange', async () => {
+    if (wakeLock !== null && document.visibilityState === 'visible') {
+        await requestWakeLock();
+    }
+});
+
+// ==========================================
+// 3. 音声再生機能
 // ==========================================
 function playAlarm() {
     alarmAudio.currentTime = 0;
@@ -34,7 +67,7 @@ function stopAlarm() {
 }
 
 // ==========================================
-// 3. メンバー管理・データ保存
+// 4. メンバー管理・データ保存
 // ==========================================
 function saveToLocalStorage() {
     localStorage.setItem('badmintonMembers', JSON.stringify(members));
@@ -99,7 +132,7 @@ function applyBaseMembers() {
 }
 
 // ==========================================
-// 4. 組み合わせ抽選（★ここを修正）
+// 5. 組み合わせ抽選
 // ==========================================
 
 function shuffle(array) {
@@ -131,9 +164,7 @@ function drawMatches() {
     let finalWaiting = [];
     let finalPairs = [];
 
-    // ============================
-    // A. 通常モード (完全ランダム)
-    // ============================
+    // A. 通常モード
     if (mode === 'normal') {
         let shuffled = shuffle([...members]);
         if (members.length > playersNeeded) {
@@ -150,56 +181,36 @@ function drawMatches() {
             }
         }
     } 
-    // ============================
-    // B. スマートモード (重み付け抽選)
-    // ============================
+    // B. スマートモード
     else {
-        // --- Step 1: 待機メンバーの決定 (優先度付き) ---
+        // Step 1: 待機メンバー決定
         let numWaiting = Math.max(0, members.length - playersNeeded);
         
         if (numWaiting > 0) {
-            // 履歴から「最近待機した人」を取得
-            // matchHistory[0] が直前、matchHistory[1] が2回前
-            let lastWaiters = []; // 直前に休んだ人（絶対休ませたくない）
-            let prevWaiters = []; // 2回前に休んだ人（できれば休ませたくない）
+            let lastWaiters = [];
+            let prevWaiters = [];
+            if (matchHistory.length > 0) lastWaiters = matchHistory[0].waiting;
+            if (matchHistory.length > 1) prevWaiters = matchHistory[1].waiting;
 
-            if (matchHistory.length > 0) {
-                lastWaiters = matchHistory[0].waiting;
-            }
-            if (matchHistory.length > 1) {
-                prevWaiters = matchHistory[1].waiting;
-            }
-
-            // グループ分け
-            let groupA = []; // 優先度高：履歴なし（休んでいない）
-            let groupB = []; // 優先度中：2回前に休んだ
-            let groupC = []; // 優先度低：直前に休んだ
+            let groupA = []; // 未待機
+            let groupB = []; // 2回前待機
+            let groupC = []; // 直前待機
 
             members.forEach(m => {
-                if (lastWaiters.includes(m)) {
-                    groupC.push(m);
-                } else if (prevWaiters.includes(m)) {
-                    groupB.push(m);
-                } else {
-                    groupA.push(m);
-                }
+                if (lastWaiters.includes(m)) groupC.push(m);
+                else if (prevWaiters.includes(m)) groupB.push(m);
+                else groupA.push(m);
             });
 
-            // 各グループ内でシャッフル
             groupA = shuffle(groupA);
             groupB = shuffle(groupB);
             groupC = shuffle(groupC);
 
-            // 結合順：A -> B -> C
-            // これにより「休んでいない人」が枯渇しない限り、休んだ人は選ばれない
             let candidates = [...groupA, ...groupB, ...groupC];
-
-            // 上から必要な人数だけ取る
             finalWaiting = candidates.slice(0, numWaiting);
         }
 
-        // --- Step 2: ペアの決定 (残りのメンバーでシャッフル) ---
-        // 待機以外のメンバー
+        // Step 2: ペア決定
         let playingMembers = members.filter(m => !finalWaiting.includes(m));
         
         let bestPairs = [];
@@ -222,7 +233,6 @@ function drawMatches() {
                 tempPairs.push(pair1, pair2);
                 tempCourts.push(p);
 
-                // 履歴チェック
                 for (let h of matchHistory) {
                     for (let oldPair of h.pairs) {
                         if (isSamePair(pair1, oldPair) || isSamePair(pair2, oldPair)) {
@@ -242,9 +252,8 @@ function drawMatches() {
             }
         }
 
-        // 500回失敗時のフォールバック（待機メンバーはStep1の結果を維持）
         if (!success) {
-            console.log("ペア生成失敗。待機優先でランダムペアを作成します。");
+            console.log("ペア重複回避失敗。待機優先で生成します。");
             let shuffled = shuffle([...playingMembers]);
             bestCourts = [];
             bestPairs = [];
@@ -262,9 +271,7 @@ function drawMatches() {
         finalPairs = bestPairs;
     }
 
-    // ============================
-    // 結果反映 & 履歴保存
-    // ============================
+    // 結果反映
     currentMatchData.courts = finalCourts;
     currentMatchData.waiting = finalWaiting;
 
@@ -273,18 +280,15 @@ function drawMatches() {
         pairs: finalPairs
     });
 
-    if (matchHistory.length > 2) {
-        matchHistory.pop();
-    }
+    if (matchHistory.length > 2) matchHistory.pop();
 
     saveToLocalStorage();
-
     selectedInfo = null;
     renderMatchBoard();
 }
 
 // ==========================================
-// 5. 以下、変更なしの機能
+// 6. 表示・入れ替え機能
 // ==========================================
 function renderMatchBoard() {
     const container = document.getElementById('courtsContainer');
@@ -347,6 +351,9 @@ function setValue(info, val) {
     else currentMatchData.waiting[info.pIdx] = val;
 }
 
+// ==========================================
+// 7. タイマー機能
+// ==========================================
 function toggleTimerView() {
     const section = document.getElementById('timerSection');
     section.style.display = (section.style.display === 'none') ? 'block' : 'none';
@@ -383,6 +390,10 @@ function toggleTimer() {
         isRunning = true;
         btn.innerText = "一時停止";
         btn.style.backgroundColor = "#ff5722";
+        
+        // ★タイマー開始時にスリープ防止をリクエスト
+        requestWakeLock();
+
         timerInterval = setInterval(() => {
             timeLeft--;
             updateTimerDisplay();
@@ -391,7 +402,9 @@ function toggleTimer() {
                 isRunning = false;
                 btn.innerText = "スタート";
                 btn.style.backgroundColor = "#00c853";
+                
                 playAlarm(); 
+                releaseWakeLock(); // ★終了時にスリープ防止解除
             }
         }, 1000);
     }
@@ -403,6 +416,7 @@ function stopTimer() {
     const btn = document.getElementById('startBtn');
     if (btn) { btn.innerText = "スタート"; btn.style.backgroundColor = "#00c853"; }
     stopAlarm(); 
+    releaseWakeLock(); // ★停止時にスリープ防止解除
 }
 
 function resetTimer() {
