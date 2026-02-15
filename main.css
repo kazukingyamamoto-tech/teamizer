@@ -46,6 +46,18 @@ body {
     margin-bottom: 10px;
 }
 
+/* 追加: モード選択のスタイル */
+.mode-selection {
+    margin: 10px 0;
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.mode-selection label {
+    cursor: pointer;
+}
+
 /* 設定セクション */
 .config-section {
     background: white;

@@ -2,6 +2,8 @@
 // 1. 変数定義と初期化
 // ==========================================
 let members = JSON.parse(localStorage.getItem('badmintonMembers')) || [];
+let matchHistory = JSON.parse(localStorage.getItem('badmintonMatchHistory')) || [];
+
 let currentMatchData = { courts: [], waiting: [] };
 let selectedInfo = null;
 
@@ -9,7 +11,6 @@ let timerInterval = null;
 let timeLeft = 60;
 let isRunning = false;
 
-// 音声ファイルの読み込み（ファイル名を合わせてください）
 const alarmAudio = new Audio('alarm.mp3'); 
 
 window.onload = () => {
@@ -22,13 +23,9 @@ window.onload = () => {
 // 2. 音声再生機能
 // ==========================================
 function playAlarm() {
-    alarmAudio.currentTime = 0; // 再生位置を先頭に戻す
-    alarmAudio.play().catch(e => console.log("オーディオ再生に失敗しました:", e));
-
-    // 10秒後に停止させる
-    setTimeout(() => {
-        stopAlarm();
-    }, 10000); 
+    alarmAudio.currentTime = 0;
+    alarmAudio.play().catch(e => console.log("再生失敗:", e));
+    setTimeout(() => stopAlarm(), 10000); 
 }
 
 function stopAlarm() {
@@ -37,10 +34,11 @@ function stopAlarm() {
 }
 
 // ==========================================
-// 3. メンバー管理・ボタン人数更新
+// 3. メンバー管理・データ保存
 // ==========================================
 function saveToLocalStorage() {
     localStorage.setItem('badmintonMembers', JSON.stringify(members));
+    localStorage.setItem('badmintonMatchHistory', JSON.stringify(matchHistory));
 }
 
 function updateDrawButton() {
@@ -91,8 +89,9 @@ function registerBaseMembers() {
 function applyBaseMembers() {
     const baseData = localStorage.getItem('badmintonBaseMembers');
     if (!baseData) { alert("登録がありません。"); return; }
-    if (confirm("登録したメンバーを適用しますか？")) {
+    if (confirm("登録したメンバーを適用しますか？\n(履歴もリセットされます)")) {
         members = JSON.parse(baseData);
+        matchHistory = []; 
         saveToLocalStorage();
         renderMasterList();
         updateDrawButton();
@@ -100,8 +99,9 @@ function applyBaseMembers() {
 }
 
 // ==========================================
-// 4. 組み合わせ抽選・入れ替え
+// 4. 組み合わせ抽選（★ここを修正）
 // ==========================================
+
 function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -110,20 +110,182 @@ function shuffle(array) {
     return array;
 }
 
+function isSamePair(pair1, pair2) {
+    const s1 = [...pair1].sort().join(',');
+    const s2 = [...pair2].sort().join(',');
+    return s1 === s2;
+}
+
 function drawMatches() {
     const courtCount = parseInt(document.querySelector('input[name="courtCount"]:checked').value);
-    if (members.length < 4) { alert("4人以上必要です。"); return; }
-    document.getElementById('instruction').style.display = 'block';
-    let shuffled = shuffle([...members]);
-    currentMatchData.courts = [];
-    for (let i = 0; i < courtCount; i++) {
-        if (shuffled.length >= 4) { currentMatchData.courts.push(shuffled.splice(0, 4)); }
+    const mode = document.querySelector('input[name="drawMode"]:checked').value;
+    const playersNeeded = courtCount * 4;
+
+    if (members.length < 4) {
+        alert("メンバーが4人以上必要です。");
+        return;
     }
-    currentMatchData.waiting = shuffled;
+    document.getElementById('instruction').style.display = 'block';
+
+    let finalCourts = [];
+    let finalWaiting = [];
+    let finalPairs = [];
+
+    // ============================
+    // A. 通常モード (完全ランダム)
+    // ============================
+    if (mode === 'normal') {
+        let shuffled = shuffle([...members]);
+        if (members.length > playersNeeded) {
+            finalWaiting = shuffled.slice(playersNeeded);
+        }
+        let playing = shuffled.slice(0, playersNeeded);
+        
+        for (let i = 0; i < playing.length; i += 4) {
+            if (i + 3 < playing.length) {
+                let p = playing.slice(i, i + 4);
+                finalCourts.push(p);
+                finalPairs.push([p[0], p[1]]);
+                finalPairs.push([p[2], p[3]]);
+            }
+        }
+    } 
+    // ============================
+    // B. スマートモード (重み付け抽選)
+    // ============================
+    else {
+        // --- Step 1: 待機メンバーの決定 (優先度付き) ---
+        let numWaiting = Math.max(0, members.length - playersNeeded);
+        
+        if (numWaiting > 0) {
+            // 履歴から「最近待機した人」を取得
+            // matchHistory[0] が直前、matchHistory[1] が2回前
+            let lastWaiters = []; // 直前に休んだ人（絶対休ませたくない）
+            let prevWaiters = []; // 2回前に休んだ人（できれば休ませたくない）
+
+            if (matchHistory.length > 0) {
+                lastWaiters = matchHistory[0].waiting;
+            }
+            if (matchHistory.length > 1) {
+                prevWaiters = matchHistory[1].waiting;
+            }
+
+            // グループ分け
+            let groupA = []; // 優先度高：履歴なし（休んでいない）
+            let groupB = []; // 優先度中：2回前に休んだ
+            let groupC = []; // 優先度低：直前に休んだ
+
+            members.forEach(m => {
+                if (lastWaiters.includes(m)) {
+                    groupC.push(m);
+                } else if (prevWaiters.includes(m)) {
+                    groupB.push(m);
+                } else {
+                    groupA.push(m);
+                }
+            });
+
+            // 各グループ内でシャッフル
+            groupA = shuffle(groupA);
+            groupB = shuffle(groupB);
+            groupC = shuffle(groupC);
+
+            // 結合順：A -> B -> C
+            // これにより「休んでいない人」が枯渇しない限り、休んだ人は選ばれない
+            let candidates = [...groupA, ...groupB, ...groupC];
+
+            // 上から必要な人数だけ取る
+            finalWaiting = candidates.slice(0, numWaiting);
+        }
+
+        // --- Step 2: ペアの決定 (残りのメンバーでシャッフル) ---
+        // 待機以外のメンバー
+        let playingMembers = members.filter(m => !finalWaiting.includes(m));
+        
+        let bestPairs = [];
+        let bestCourts = [];
+        let success = false;
+
+        for (let attempt = 0; attempt < 500; attempt++) {
+            let shuffled = shuffle([...playingMembers]);
+            let tempPairs = [];
+            let tempCourts = [];
+            let isPairDuplicate = false;
+
+            for (let i = 0; i < shuffled.length; i += 4) {
+                if (i + 3 >= shuffled.length) break;
+                
+                let p = shuffled.slice(i, i + 4);
+                let pair1 = [p[0], p[1]];
+                let pair2 = [p[2], p[3]];
+                
+                tempPairs.push(pair1, pair2);
+                tempCourts.push(p);
+
+                // 履歴チェック
+                for (let h of matchHistory) {
+                    for (let oldPair of h.pairs) {
+                        if (isSamePair(pair1, oldPair) || isSamePair(pair2, oldPair)) {
+                            isPairDuplicate = true; break;
+                        }
+                    }
+                    if (isPairDuplicate) break;
+                }
+                if (isPairDuplicate) break;
+            }
+
+            if (!isPairDuplicate) {
+                success = true;
+                bestPairs = tempPairs;
+                bestCourts = tempCourts;
+                break; 
+            }
+        }
+
+        // 500回失敗時のフォールバック（待機メンバーはStep1の結果を維持）
+        if (!success) {
+            console.log("ペア生成失敗。待機優先でランダムペアを作成します。");
+            let shuffled = shuffle([...playingMembers]);
+            bestCourts = [];
+            bestPairs = [];
+            for (let i = 0; i < shuffled.length; i += 4) {
+                if (i + 3 < shuffled.length) {
+                    let p = shuffled.slice(i, i + 4);
+                    bestCourts.push(p);
+                    bestPairs.push([p[0], p[1]]);
+                    bestPairs.push([p[2], p[3]]);
+                }
+            }
+        }
+
+        finalCourts = bestCourts;
+        finalPairs = bestPairs;
+    }
+
+    // ============================
+    // 結果反映 & 履歴保存
+    // ============================
+    currentMatchData.courts = finalCourts;
+    currentMatchData.waiting = finalWaiting;
+
+    matchHistory.unshift({
+        waiting: finalWaiting,
+        pairs: finalPairs
+    });
+
+    if (matchHistory.length > 2) {
+        matchHistory.pop();
+    }
+
+    saveToLocalStorage();
+
     selectedInfo = null;
     renderMatchBoard();
 }
 
+// ==========================================
+// 5. 以下、変更なしの機能
+// ==========================================
 function renderMatchBoard() {
     const container = document.getElementById('courtsContainer');
     const waitingListDiv = document.getElementById('waitingList');
@@ -185,9 +347,6 @@ function setValue(info, val) {
     else currentMatchData.waiting[info.pIdx] = val;
 }
 
-// ==========================================
-// 5. タイマー機能
-// ==========================================
 function toggleTimerView() {
     const section = document.getElementById('timerSection');
     section.style.display = (section.style.display === 'none') ? 'block' : 'none';
@@ -232,8 +391,7 @@ function toggleTimer() {
                 isRunning = false;
                 btn.innerText = "スタート";
                 btn.style.backgroundColor = "#00c853";
-                
-                playAlarm(); // ここで音声を再生
+                playAlarm(); 
             }
         }, 1000);
     }
@@ -244,7 +402,7 @@ function stopTimer() {
     isRunning = false;
     const btn = document.getElementById('startBtn');
     if (btn) { btn.innerText = "スタート"; btn.style.backgroundColor = "#00c853"; }
-    stopAlarm(); // タイマー停止時に音も止める
+    stopAlarm(); 
 }
 
 function resetTimer() {

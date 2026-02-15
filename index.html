@@ -40,6 +40,11 @@
             <label><input type="radio" name="courtCount" value="2"> 2</label>
             <label><input type="radio" name="courtCount" value="3"> 3</label>
         </div>
+        <div class="mode-selection">
+            <span>抽選モード:</span>
+            <label><input type="radio" name="drawMode" value="normal"> 通常（ランダム）</label>
+            <label><input type="radio" name="drawMode" value="smart" checked> スマート（重複回避）</label>
+        </div>
         <button id="drawBtn" class="btn-draw" onclick="drawMatches()">組み合わせ作成！（0名）</button>
     </div>
 
