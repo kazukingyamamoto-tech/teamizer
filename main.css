@@ -58,6 +58,16 @@ body {
     cursor: pointer;
 }
 
+.error-text {
+    margin-top: 10px;
+    padding: 10px;
+    background: #ffebee;
+    color: #c62828;
+    border-left: 5px solid #c62828;
+    border-radius: 8px;
+    font-weight: bold;
+}
+
 /* 設定セクション */
 .config-section {
     background: white;
@@ -141,13 +151,46 @@ button {
 .court-wrapper {
     background: var(--court-green);
     width: 280px;
-    height: 250px;
+    min-height: 250px;
     border: 4px solid var(--court-line);
     position: relative;
     display: flex;
     flex-direction: column;
-    justify-content: space-around;
-    padding: 10px 0;
+    justify-content: space-between;
+    padding: 6px 0;
+    margin-top: 25px;
+}
+
+/* コートの片側（奥側 / 手前側）: 人数セレクトと選手枠 */
+.court-side {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 4px 8px;
+}
+
+.court-side-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--court-line);
+    font-size: 0.85em;
+    font-weight: bold;
+}
+
+.court-side-header select {
+    padding: 2px 4px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.member-chip.empty {
+    background: rgba(255,255,255,0.25);
+    border-color: rgba(255,255,255,0.5);
+    color: rgba(255,255,255,0.7);
+    min-width: 20px;
+    text-align: center;
 }
 
 .court-label {
@@ -158,7 +201,7 @@ button {
 }
 
 .net-line { height: 2px; background: var(--court-line); width: 100%; }
-.player-slot { display: flex; justify-content: space-around; width: 100%; }
+.player-slot { display: flex; flex-wrap: wrap; justify-content: space-around; gap: 6px; width: 100%; min-height: 40px; align-items: center; }
 
 .waiting-room {
     margin-top: 30px;

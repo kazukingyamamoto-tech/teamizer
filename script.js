@@ -4,6 +4,16 @@
 let members = JSON.parse(localStorage.getItem('badmintonMembers')) || [];
 let matchHistory = JSON.parse(localStorage.getItem('badmintonMatchHistory')) || [];
 
+// コート設定（使用コート数と、コートごとの奥側・手前側の選出人数 0〜4）
+const MAX_PLAYERS_PER_SIDE = 4;
+const SIDES = [
+    { key: 'far', label: '奥側' },
+    { key: 'near', label: '手前側' }
+];
+const DEFAULT_COURT_SETTINGS = { courtCount: 1, sides: [[2, 2], [2, 2], [2, 2]] };
+let courtSettings = JSON.parse(localStorage.getItem('badmintonCourtSettings'));
+if (!courtSettings || !Array.isArray(courtSettings.sides)) courtSettings = structuredClone(DEFAULT_COURT_SETTINGS);
+
 let currentMatchData = { courts: [], waiting: [] };
 let selectedInfo = null;
 
@@ -20,6 +30,7 @@ window.onload = () => {
     renderMasterList();
     updateTimerDisplay();
     updateDrawButton();
+    initCourtSettings();
 };
 
 // ==========================================
@@ -72,6 +83,47 @@ function stopAlarm() {
 function saveToLocalStorage() {
     localStorage.setItem('badmintonMembers', JSON.stringify(members));
     localStorage.setItem('badmintonMatchHistory', JSON.stringify(matchHistory));
+    localStorage.setItem('badmintonCourtSettings', JSON.stringify(courtSettings));
+}
+
+// ==========================================
+// 4-2. コート設定（コート数・コートごとの人数）
+// ==========================================
+function initCourtSettings() {
+    const radio = document.querySelector(`input[name="courtCount"][value="${courtSettings.courtCount}"]`);
+    if (radio) radio.checked = true;
+    renderMatchBoard();
+}
+
+function onCourtCountChange() {
+    courtSettings.courtCount = parseInt(document.querySelector('input[name="courtCount"]:checked').value);
+    saveToLocalStorage();
+    hideDrawError();
+    renderMatchBoard();
+}
+
+function onSideSizeChange(courtIdx, sideIdx, value) {
+    courtSettings.sides[courtIdx][sideIdx] = parseInt(value);
+    saveToLocalStorage();
+    hideDrawError();
+    renderMatchBoard();
+}
+
+// 使用中コートの [奥側, 手前側] 人数配列（例: [[2,2], [1,1]]）
+function getCourtSizes() {
+    return courtSettings.sides.slice(0, courtSettings.courtCount);
+}
+
+function showDrawError(msg) {
+    const div = document.getElementById('drawError');
+    if (!div) return;
+    div.innerText = msg;
+    div.style.display = 'block';
+}
+
+function hideDrawError() {
+    const div = document.getElementById('drawError');
+    if (div) div.style.display = 'none';
 }
 
 function updateDrawButton() {
@@ -149,15 +201,48 @@ function isSamePair(pair1, pair2) {
     return s1 === s2;
 }
 
-function drawMatches() {
-    const courtCount = parseInt(document.querySelector('input[name="courtCount"]:checked').value);
-    const mode = document.querySelector('input[name="drawMode"]:checked').value;
-    const playersNeeded = courtCount * 4;
+// プレイヤー配列をコートごと・側ごとの人数で切り分け、
+// コート配列（{far: [...], near: [...]}）と2人組ペア一覧を返す
+function buildCourts(playing, courtSizes) {
+    let courts = [];
+    let pairs = [];
+    let offset = 0;
+    for (const sizes of courtSizes) {
+        const court = {};
+        SIDES.forEach((side, sIdx) => {
+            const team = playing.slice(offset, offset + sizes[sIdx]);
+            offset += sizes[sIdx];
+            court[side.key] = team;
+            if (team.length === 2) pairs.push(team);
+        });
+        courts.push(court);
+    }
+    return { courts, pairs };
+}
 
-    if (members.length < 4) {
-        alert("メンバーが4人以上必要です。");
+function hasDuplicatePair(pairs) {
+    for (const h of matchHistory) {
+        for (const oldPair of h.pairs) {
+            if (pairs.some(pair => isSamePair(pair, oldPair))) return true;
+        }
+    }
+    return false;
+}
+
+function drawMatches() {
+    const mode = document.querySelector('input[name="drawMode"]:checked').value;
+    const courtSizes = getCourtSizes();
+    const playersNeeded = courtSizes.flat().reduce((sum, n) => sum + n, 0);
+
+    if (playersNeeded === 0) {
+        showDrawError("コートの人数がすべて0人です。いずれかのコートに人数を設定してください。");
         return;
     }
+    if (members.length < playersNeeded) {
+        showDrawError(`メンバーが足りません。コート設定では${playersNeeded}名必要ですが、現在${members.length}名です。`);
+        return;
+    }
+    hideDrawError();
     document.getElementById('instruction').style.display = 'block';
 
     let finalCourts = [];
@@ -171,15 +256,9 @@ function drawMatches() {
             finalWaiting = shuffled.slice(playersNeeded);
         }
         let playing = shuffled.slice(0, playersNeeded);
-        
-        for (let i = 0; i < playing.length; i += 4) {
-            if (i + 3 < playing.length) {
-                let p = playing.slice(i, i + 4);
-                finalCourts.push(p);
-                finalPairs.push([p[0], p[1]]);
-                finalPairs.push([p[2], p[3]]);
-            }
-        }
+        const built = buildCourts(playing, courtSizes);
+        finalCourts = built.courts;
+        finalPairs = built.pairs;
     } 
     // B. スマートモード
     else {
@@ -219,35 +298,12 @@ function drawMatches() {
 
         for (let attempt = 0; attempt < 500; attempt++) {
             let shuffled = shuffle([...playingMembers]);
-            let tempPairs = [];
-            let tempCourts = [];
-            let isPairDuplicate = false;
+            const built = buildCourts(shuffled, courtSizes);
 
-            for (let i = 0; i < shuffled.length; i += 4) {
-                if (i + 3 >= shuffled.length) break;
-                
-                let p = shuffled.slice(i, i + 4);
-                let pair1 = [p[0], p[1]];
-                let pair2 = [p[2], p[3]];
-                
-                tempPairs.push(pair1, pair2);
-                tempCourts.push(p);
-
-                for (let h of matchHistory) {
-                    for (let oldPair of h.pairs) {
-                        if (isSamePair(pair1, oldPair) || isSamePair(pair2, oldPair)) {
-                            isPairDuplicate = true; break;
-                        }
-                    }
-                    if (isPairDuplicate) break;
-                }
-                if (isPairDuplicate) break;
-            }
-
-            if (!isPairDuplicate) {
+            if (!hasDuplicatePair(built.pairs)) {
                 success = true;
-                bestPairs = tempPairs;
-                bestCourts = tempCourts;
+                bestPairs = built.pairs;
+                bestCourts = built.courts;
                 break; 
             }
         }
@@ -255,16 +311,9 @@ function drawMatches() {
         if (!success) {
             console.log("ペア重複回避失敗。待機優先で生成します。");
             let shuffled = shuffle([...playingMembers]);
-            bestCourts = [];
-            bestPairs = [];
-            for (let i = 0; i < shuffled.length; i += 4) {
-                if (i + 3 < shuffled.length) {
-                    let p = shuffled.slice(i, i + 4);
-                    bestCourts.push(p);
-                    bestPairs.push([p[0], p[1]]);
-                    bestPairs.push([p[2], p[3]]);
-                }
-            }
+            const built = buildCourts(shuffled, courtSizes);
+            bestCourts = built.courts;
+            bestPairs = built.pairs;
         }
 
         finalCourts = bestCourts;
@@ -296,42 +345,89 @@ function renderMatchBoard() {
     const waitingRoom = document.getElementById('waitingRoom');
     container.innerHTML = '';
     waitingListDiv.innerHTML = '';
-    currentMatchData.courts.forEach((p, cIdx) => {
+    // 抽選前でもコートは常に表示し、各側に人数セレクトを置く
+    for (let cIdx = 0; cIdx < courtSettings.courtCount; cIdx++) {
         const courtDiv = document.createElement('div');
         courtDiv.className = 'court-wrapper';
         courtDiv.innerHTML = `<div class="court-label">コート ${cIdx + 1}</div>`;
-        const t1 = document.createElement('div'); t1.className = 'player-slot';
-        t1.appendChild(createPlayerButton(p[0], 'court', cIdx, 0));
-        t1.appendChild(createPlayerButton(p[1], 'court', cIdx, 1));
-        const net = document.createElement('div'); net.className = 'net-line';
-        const t2 = document.createElement('div'); t2.className = 'player-slot';
-        t2.appendChild(createPlayerButton(p[2], 'court', cIdx, 2));
-        t2.appendChild(createPlayerButton(p[3], 'court', cIdx, 3));
-        courtDiv.appendChild(t1); courtDiv.appendChild(net); courtDiv.appendChild(t2);
+        SIDES.forEach((side, sIdx) => {
+            if (sIdx > 0) {
+                const net = document.createElement('div'); net.className = 'net-line';
+                courtDiv.appendChild(net);
+            }
+            courtDiv.appendChild(createCourtSide(cIdx, sIdx));
+        });
         container.appendChild(courtDiv);
-    });
+    }
     if (currentMatchData.waiting.length > 0) {
         waitingRoom.style.display = 'block';
         currentMatchData.waiting.forEach((name, pIdx) => {
-            waitingListDiv.appendChild(createPlayerButton(name, 'waiting', null, pIdx));
+            waitingListDiv.appendChild(createPlayerButton(name, 'waiting', null, null, pIdx));
         });
     } else { waitingRoom.style.display = 'none'; }
 }
 
-function createPlayerButton(name, type, courtIdx, pIdx) {
+// コートの片側（奥側 / 手前側）: ヘッダー（ラベル + 人数セレクト）と選手枠
+function createCourtSide(courtIdx, sideIdx) {
+    const side = SIDES[sideIdx];
+    const wrapper = document.createElement('div');
+    wrapper.className = 'court-side';
+
+    const header = document.createElement('div');
+    header.className = 'court-side-header';
+    header.innerText = side.label;
+    const select = document.createElement('select');
+    for (let n = 0; n <= MAX_PLAYERS_PER_SIDE; n++) {
+        const opt = document.createElement('option');
+        opt.value = n;
+        opt.innerText = `${n}人`;
+        if (n === courtSettings.sides[courtIdx][sideIdx]) opt.selected = true;
+        select.appendChild(opt);
+    }
+    select.onchange = () => onSideSizeChange(courtIdx, sideIdx, select.value);
+    header.appendChild(select);
+
+    const slot = document.createElement('div');
+    slot.className = 'player-slot';
+    const court = currentMatchData.courts[courtIdx];
+    if (court) {
+        court[side.key].forEach((name, pIdx) => {
+            slot.appendChild(createPlayerButton(name, 'court', courtIdx, side.key, pIdx));
+        });
+    } else {
+        // 抽選前は設定人数ぶんの空枠を表示
+        for (let i = 0; i < courtSettings.sides[courtIdx][sideIdx]; i++) {
+            const empty = document.createElement('div');
+            empty.className = 'member-chip empty';
+            empty.innerText = '?';
+            slot.appendChild(empty);
+        }
+    }
+
+    wrapper.appendChild(header);
+    wrapper.appendChild(slot);
+    return wrapper;
+}
+
+function isSameSlot(a, b) {
+    return a.type === b.type && a.courtIdx === b.courtIdx && a.side === b.side && a.pIdx === b.pIdx;
+}
+
+function createPlayerButton(name, type, courtIdx, side, pIdx) {
     const btn = document.createElement('div');
     btn.className = 'member-chip';
     btn.innerText = name;
-    if (selectedInfo && selectedInfo.type === type && selectedInfo.courtIdx === courtIdx && selectedInfo.pIdx === pIdx) {
+    const info = { type, courtIdx, side, pIdx };
+    if (selectedInfo && isSameSlot(selectedInfo, info)) {
         btn.classList.add('selected');
     }
     btn.onclick = () => {
         if (!selectedInfo) {
-            selectedInfo = { type, courtIdx, pIdx };
+            selectedInfo = info;
             renderMatchBoard();
         } else {
-            const src = selectedInfo; const dest = { type, courtIdx, pIdx };
-            if (src.type === dest.type && src.courtIdx === dest.courtIdx && src.pIdx === dest.pIdx) {
+            const src = selectedInfo; const dest = info;
+            if (isSameSlot(src, dest)) {
                 selectedInfo = null; renderMatchBoard(); return;
             }
             let v1 = getValue(src); let v2 = getValue(dest);
@@ -343,11 +439,11 @@ function createPlayerButton(name, type, courtIdx, pIdx) {
 }
 
 function getValue(info) {
-    if (info.type === 'court') return currentMatchData.courts[info.courtIdx][info.pIdx];
+    if (info.type === 'court') return currentMatchData.courts[info.courtIdx][info.side][info.pIdx];
     return currentMatchData.waiting[info.pIdx];
 }
 function setValue(info, val) {
-    if (info.type === 'court') currentMatchData.courts[info.courtIdx][info.pIdx] = val;
+    if (info.type === 'court') currentMatchData.courts[info.courtIdx][info.side][info.pIdx] = val;
     else currentMatchData.waiting[info.pIdx] = val;
 }
 

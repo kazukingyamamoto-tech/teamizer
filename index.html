@@ -36,9 +36,9 @@
         <div id="memberList" class="member-list"></div>
         <div class="court-selection">
             <span>使用コート数:</span>
-            <label><input type="radio" name="courtCount" value="1" checked> 1</label>
-            <label><input type="radio" name="courtCount" value="2"> 2</label>
-            <label><input type="radio" name="courtCount" value="3"> 3</label>
+            <label><input type="radio" name="courtCount" value="1" checked onchange="onCourtCountChange()"> 1</label>
+            <label><input type="radio" name="courtCount" value="2" onchange="onCourtCountChange()"> 2</label>
+            <label><input type="radio" name="courtCount" value="3" onchange="onCourtCountChange()"> 3</label>
         </div>
         <div class="mode-selection">
             <span>抽選モード:</span>
@@ -46,6 +46,7 @@
             <label><input type="radio" name="drawMode" value="smart" checked> スマート（重複回避）</label>
         </div>
         <button id="drawBtn" class="btn-draw" onclick="drawMatches()">組み合わせ作成！（0名）</button>
+        <div id="drawError" class="error-text" style="display:none;"></div>
     </div>
 
     <div id="instruction" class="info-text" style="display:none;">
