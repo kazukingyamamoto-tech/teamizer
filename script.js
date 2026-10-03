@@ -1,24 +1,6 @@
 // ==========================================
 // 1. 変数定義と初期化
 // ==========================================
-let members = JSON.parse(localStorage.getItem('badmintonMembers')) || [];
-let matchHistory = JSON.parse(localStorage.getItem('badmintonMatchHistory')) || [];
-
-// コート設定（使用コート数と、コートごとの奥側・手前側の選出人数 0〜4）
-const MAX_PLAYERS_PER_SIDE = 4;
-const SIDES = [
-    { key: 'far', label: '奥側' },
-    { key: 'near', label: '手前側' }
-];
-const DEFAULT_COURT_SETTINGS = { courtCount: 1, sides: [[2, 2], [2, 2], [2, 2]] };
-let courtSettings = JSON.parse(localStorage.getItem('badmintonCourtSettings'));
-if (!courtSettings || !Array.isArray(courtSettings.sides)) courtSettings = structuredClone(DEFAULT_COURT_SETTINGS);
-
-// メンバー表プリセット [{ name, members: [...] }]
-let memberPresets = JSON.parse(localStorage.getItem('badmintonPresets')) || [];
-// これまでに使ったメンバーと参加・待機回数 { 名前: { games, waits } }
-let memberStats = JSON.parse(localStorage.getItem('badmintonMemberStats')) || {};
-
 let currentMatchData = { courts: [], waiting: [] };
 let selectedInfo = null;
 
@@ -38,6 +20,14 @@ window.onload = () => {
     updateDrawButton();
     initCourtSettings();
 };
+
+// データ変更時にこのページを描き直す（data.js から呼ばれる）
+function onAppDataChanged() {
+    renderMasterList();
+    updateDrawButton();
+    initCourtSettings();
+    if (isManagePanelOpen()) renderManagePanel();
+}
 
 // ==========================================
 // 2. スリープ防止機能 (Screen Wake Lock API) ★追加部分
@@ -83,36 +73,8 @@ function stopAlarm() {
     alarmAudio.currentTime = 0;
 }
 
-// ==========================================
-// 4. メンバー管理・データ保存
-// ==========================================
-function saveToLocalStorage() {
-    localStorage.setItem('badmintonMembers', JSON.stringify(members));
-    localStorage.setItem('badmintonMatchHistory', JSON.stringify(matchHistory));
-    localStorage.setItem('badmintonCourtSettings', JSON.stringify(courtSettings));
-    localStorage.setItem('badmintonPresets', JSON.stringify(memberPresets));
-    localStorage.setItem('badmintonMemberStats', JSON.stringify(memberStats));
-}
 
-// 旧「登録」機能のデータをプリセットへ引き継ぐ
-function migrateLegacyData() {
-    const legacy = localStorage.getItem('badmintonBaseMembers');
-    if (legacy) {
-        const list = JSON.parse(legacy);
-        if (Array.isArray(list) && list.length > 0 && !memberPresets.some(p => p.name === '登録メンバー')) {
-            memberPresets.push({ name: '登録メンバー', members: list });
-        }
-        localStorage.removeItem('badmintonBaseMembers');
-    }
-    // 現在のメンバーを使用履歴に取り込む
-    members.forEach(touchMember);
-    saveToLocalStorage();
-}
 
-// 使用履歴に名前を登録する（既にあれば何もしない）
-function touchMember(name) {
-    if (!memberStats[name]) memberStats[name] = { games: 0, waits: 0 };
-}
 
 // ==========================================
 // 4-2. コート設定（コート数・コートごとの人数）
@@ -169,26 +131,10 @@ function addMember() {
         touchMember(name);
         input.value = '';
         saveToLocalStorage();
-        renderMasterList();
-        updateDrawButton();
+        notifyDataChanged();
     }
 }
 
-// 名前の配列を今日のメンバーに追加する（重複は無視）
-function addMembers(names) {
-    let added = 0;
-    names.forEach(name => {
-        if (!members.includes(name)) {
-            members.push(name);
-            added++;
-        }
-        touchMember(name);
-    });
-    saveToLocalStorage();
-    renderMasterList();
-    updateDrawButton();
-    return { added, skipped: names.length - added };
-}
 
 function renderMasterList() {
     const listDiv = document.getElementById('memberList');
@@ -201,12 +147,10 @@ function renderMasterList() {
         chip.onclick = () => {
             members = members.filter(m => m !== name);
             saveToLocalStorage();
-            renderMasterList();
-            updateDrawButton();
+            notifyDataChanged();
         };
         listDiv.appendChild(chip);
     });
-    if (isManagePanelOpen()) renderManagePanel();
 }
 
 // ==========================================
@@ -564,7 +508,8 @@ function resetTimer() {
     updateTimerSetting();
 }
 // ==========================================
-// 8. メンバー管理パネル
+// 8. メンバー管理パネル（現在のメンバー / プリセット）
+//    CSV登録・使用履歴・回数・データ管理は manage.html にある
 // ==========================================
 function isManagePanelOpen() {
     const overlay = document.getElementById('manageOverlay');
@@ -581,8 +526,6 @@ function toggleManagePanel(show) {
 function renderManagePanel() {
     renderPanelCurrent();
     renderPresets();
-    renderArchive();
-    renderStats();
 }
 
 // --- 現在のメンバー ---
@@ -602,8 +545,7 @@ function renderPanelCurrent() {
         chip.onclick = () => {
             members = members.filter(m => m !== name);
             saveToLocalStorage();
-            renderMasterList();
-            updateDrawButton();
+            notifyDataChanged();
         };
         listDiv.appendChild(chip);
     });
@@ -668,8 +610,7 @@ function applyPreset(idx) {
     members.forEach(touchMember);
     matchHistory = [];
     saveToLocalStorage();
-    renderMasterList();
-    updateDrawButton();
+    notifyDataChanged();
 }
 
 function overwritePreset(idx) {
@@ -686,183 +627,4 @@ function deletePreset(idx) {
     memberPresets.splice(idx, 1);
     saveToLocalStorage();
     renderPresets();
-}
-
-// --- CSV一括登録 ---
-// カンマ・改行・タブ区切りの名前を取り出す（引用符とヘッダー行は除去）
-function parseNames(text) {
-    const headers = ['名前', 'なまえ', 'name', 'メンバー', 'member'];
-    const seen = new Set();
-    const names = [];
-    text.split(/[\n,\t]/).forEach(raw => {
-        const name = raw.trim().replace(/^["']|["']$/g, '').trim();
-        if (!name || seen.has(name)) return;
-        if (headers.includes(name.toLowerCase())) return;
-        seen.add(name);
-        names.push(name);
-    });
-    return names;
-}
-
-function importMembersFromText() {
-    const textarea = document.getElementById('csvInput');
-    applyCsvNames(parseNames(textarea.value), () => { textarea.value = ''; });
-}
-
-function importMembersFromFile(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => applyCsvNames(parseNames(reader.result));
-    reader.readAsText(file);
-    event.target.value = '';
-}
-
-function applyCsvNames(names, onSuccess) {
-    const result = document.getElementById('csvResult');
-    if (names.length === 0) {
-        result.innerText = '読み取れる名前がありませんでした。';
-        return;
-    }
-    const { added, skipped } = addMembers(names);
-    result.innerText = `${added}名を追加しました。` + (skipped > 0 ? `（${skipped}名は登録済みのためスキップ）` : '');
-    if (onSuccess) onSuccess();
-}
-
-// --- これまでに使ったメンバー ---
-function renderArchive() {
-    const listDiv = document.getElementById('archiveList');
-    if (!listDiv) return;
-    const archived = Object.keys(memberStats).filter(name => !members.includes(name)).sort();
-    document.getElementById('panelArchiveCount').innerText = Object.keys(memberStats).length;
-    listDiv.innerHTML = '';
-    if (archived.length === 0) {
-        listDiv.innerHTML = '<div class="empty-note">今日のメンバー以外に記録はありません。</div>';
-        return;
-    }
-    archived.forEach(name => {
-        const chip = document.createElement('div');
-        chip.className = 'member-chip archive-chip';
-
-        const label = document.createElement('span');
-        label.innerText = name;
-        label.onclick = () => addMembers([name]);
-        chip.appendChild(label);
-
-        const remove = document.createElement('button');
-        remove.className = 'chip-remove';
-        remove.innerText = '✕';
-        remove.onclick = () => {
-            if (!confirm(`${name} を履歴から削除しますか？`)) return;
-            delete memberStats[name];
-            saveToLocalStorage();
-            renderManagePanel();
-        };
-        chip.appendChild(remove);
-        listDiv.appendChild(chip);
-    });
-}
-
-function clearArchive() {
-    if (!confirm("今日のメンバー以外を履歴から削除しますか？\n(その人たちの参加・待機回数も消えます)")) return;
-    Object.keys(memberStats).forEach(name => {
-        if (!members.includes(name)) delete memberStats[name];
-    });
-    saveToLocalStorage();
-    renderManagePanel();
-}
-
-// --- 参加・待機回数 ---
-function renderStats() {
-    const container = document.getElementById('statsTable');
-    if (!container) return;
-    const rows = Object.entries(memberStats)
-        .filter(([, st]) => st.games > 0 || st.waits > 0)
-        .sort((a, b) => (b[1].games - a[1].games) || a[0].localeCompare(b[0], 'ja'));
-    if (rows.length === 0) {
-        container.innerHTML = '<div class="empty-note">まだ記録がありません。</div>';
-        return;
-    }
-    const table = document.createElement('table');
-    table.className = 'stats-table';
-    table.innerHTML = '<tr><th>名前</th><th>試合</th><th>待機</th></tr>';
-    rows.forEach(([name, st]) => {
-        const tr = document.createElement('tr');
-        [name, st.games, st.waits].forEach(v => {
-            const td = document.createElement('td');
-            td.innerText = v;
-            tr.appendChild(td);
-        });
-        table.appendChild(tr);
-    });
-    container.innerHTML = '';
-    container.appendChild(table);
-}
-
-function resetStats() {
-    if (!confirm("全員の参加・待機回数を0に戻しますか？\n(メンバーと履歴メンバーは残ります)")) return;
-    Object.keys(memberStats).forEach(name => { memberStats[name] = { games: 0, waits: 0 }; });
-    saveToLocalStorage();
-    renderManagePanel();
-}
-
-// --- データ管理（バックアップ／復元） ---
-function exportData() {
-    const data = {
-        app: 'badminton-teamizer',
-        version: 1,
-        exportedAt: new Date().toISOString(),
-        members,
-        memberPresets,
-        memberStats,
-        courtSettings,
-        matchHistory
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const date = new Date().toISOString().slice(0, 10);
-    a.href = url;
-    a.download = `teamizer-backup-${date}.json`;
-    // Firefox はDOMに挿入しないとクリックが効かず、
-    // iOS Safari は即座にrevokeすると保存に失敗することがある
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function importData(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-        let data;
-        try {
-            data = JSON.parse(reader.result);
-        } catch (e) {
-            alert("ファイルを読み込めませんでした。");
-            return;
-        }
-        if (!data || data.app !== 'badminton-teamizer') {
-            alert("このアプリのバックアップファイルではないようです。");
-            return;
-        }
-        if (!confirm("現在のデータをバックアップの内容で置き換えますか？")) return;
-        members = Array.isArray(data.members) ? data.members : [];
-        memberPresets = Array.isArray(data.memberPresets) ? data.memberPresets : [];
-        memberStats = (data.memberStats && typeof data.memberStats === 'object') ? data.memberStats : {};
-        if (data.courtSettings && Array.isArray(data.courtSettings.sides)) courtSettings = data.courtSettings;
-        matchHistory = Array.isArray(data.matchHistory) ? data.matchHistory : [];
-        currentMatchData = { courts: [], waiting: [] };
-        members.forEach(touchMember);
-        saveToLocalStorage();
-        initCourtSettings();
-        renderMasterList();
-        updateDrawButton();
-        renderManagePanel();
-        alert("バックアップを読み込みました。");
-    };
-    reader.readAsText(file);
-    event.target.value = '';
 }

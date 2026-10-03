@@ -356,3 +356,45 @@ button {
 }
 .stats-table th { color: #666; }
 .stats-table td:not(:first-child) { text-align: right; }
+
+/* ==========================================
+   メンバー設定ページ (manage.html)
+   ========================================== */
+.page-container {
+    width: 100%;
+    max-width: 600px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.page-header {
+    padding: 15px 20px;
+    border-bottom: 2px solid #eee;
+}
+
+.page-header h1 {
+    font-size: 1.3em;
+    margin: 10px 0 0;
+}
+
+.btn-back {
+    display: inline-block;
+    color: var(--primary-color);
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.page-body { padding: 10px 20px 20px; }
+
+.btn-page-link {
+    display: block;
+    margin-top: 15px;
+    padding: 12px;
+    background-color: #546e7a;
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: bold;
+}

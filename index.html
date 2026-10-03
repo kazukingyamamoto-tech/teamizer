@@ -82,49 +82,12 @@
                     <div id="presetList" class="preset-list"></div>
                 </details>
 
-                <details class="panel-section">
-                    <summary>CSVで一括登録</summary>
-                    <p class="info-text">名前をカンマまたは改行で区切って貼り付けるか、CSVファイルを読み込みます。</p>
-                    <textarea id="csvInput" class="csv-input" rows="4" placeholder="太郎, 花子, 次郎&#10;三郎"></textarea>
-                    <div class="data-actions">
-                        <button class="btn-add" onclick="importMembersFromText()">貼り付けた内容を追加</button>
-                        <label class="btn-apply file-label">
-                            CSVファイルを読み込む
-                            <input type="file" id="csvFile" accept=".csv,text/csv,text/plain" onchange="importMembersFromFile(event)">
-                        </label>
-                    </div>
-                    <div id="csvResult" class="csv-result"></div>
-                </details>
-
-                <details class="panel-section">
-                    <summary>これまでに使ったメンバー（<span id="panelArchiveCount">0</span>名）</summary>
-                    <p class="info-text">タップすると今日のメンバーに追加します。✕で履歴から削除します。</p>
-                    <div id="archiveList" class="member-list"></div>
-                    <button class="btn-danger" onclick="clearArchive()">今日のメンバー以外を履歴から削除</button>
-                </details>
-
-                <details class="panel-section">
-                    <summary>参加・待機回数</summary>
-                    <p class="info-text">「組み合わせ作成」のたびに記録されます。</p>
-                    <div id="statsTable"></div>
-                    <button class="btn-danger" onclick="resetStats()">回数をリセット</button>
-                </details>
-
-                <details class="panel-section">
-                    <summary>データ管理</summary>
-                    <p class="info-text">メンバー・プリセット・コート設定・記録をまとめて保存／復元します。</p>
-                    <div class="data-actions">
-                        <button class="btn-add" onclick="exportData()">バックアップを書き出す</button>
-                        <label class="btn-apply file-label">
-                            バックアップを読み込む
-                            <input type="file" id="importFile" accept="application/json,.json" onchange="importData(event)">
-                        </label>
-                    </div>
-                </details>
+                <a class="btn-page-link" href="manage.html">メンバー設定ページを開く →</a>
             </div>
         </div>
     </div>
 
+    <script src="data.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
