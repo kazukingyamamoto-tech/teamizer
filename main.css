@@ -286,13 +286,6 @@ button {
 
 .panel-section .info-text { margin-top: 10px; }
 
-.preset-create {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-bottom: 10px;
-}
-
 .preset-list { display: flex; flex-direction: column; gap: 8px; }
 
 .preset-row {
@@ -406,7 +399,8 @@ button {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
-    margin-bottom: 10px;
+    padding: 10px 0 14px;
+    border-bottom: 1px solid #eee;
 }
 
 .btn-quick {

@@ -33,11 +33,6 @@
             <button class="btn-manage" onclick="toggleManagePanel(true)">⚙ メンバー管理</button>
         </div>
         <div id="memberList" class="member-list"></div>
-        <div class="quick-actions">
-            <button class="btn-quick" onclick="openArchivePickDialog()">＋ 履歴から追加</button>
-            <button class="btn-quick" onclick="openPresetPickDialog()">📋 プリセットを呼び出す</button>
-            <button class="btn-quick" onclick="openPresetSaveDialog()">💾 プリセットに保存</button>
-        </div>
         <div class="court-selection">
             <span>使用コート数:</span>
             <label><input type="radio" name="courtCount" value="1" checked onchange="onCourtCountChange()"> 1</label>
@@ -71,6 +66,12 @@
                 <button class="btn-close" onclick="toggleManagePanel(false)">✕</button>
             </div>
             <div class="panel-body">
+                <div class="quick-actions">
+                    <button class="btn-quick" onclick="openArchivePickDialog()">＋ 履歴から追加</button>
+                    <button class="btn-quick" onclick="openPresetPickDialog()">📋 プリセットを呼び出す</button>
+                    <button class="btn-quick" onclick="openPresetSaveDialog()">💾 プリセットに保存</button>
+                </div>
+
                 <details class="panel-section" open>
                     <summary>現在のメンバー（<span id="panelCurrentCount">0</span>名）</summary>
                     <p class="info-text">タップすると今日のメンバーから外します。</p>
@@ -79,11 +80,7 @@
 
                 <details class="panel-section">
                     <summary>プリセット（<span id="panelPresetCount">0</span>件）</summary>
-                    <p class="info-text">よく使うメンバー表に名前を付けて保存しておけます。</p>
-                    <div class="preset-create">
-                        <input type="text" id="presetNameInput" placeholder="プリセット名（例: 水曜メンバー）">
-                        <button class="btn-add" onclick="savePreset()">現在のメンバーを保存</button>
-                    </div>
+                    <p class="info-text">保存したメンバー表の一覧です。上書き・削除はこちらから。</p>
                     <div id="presetList" class="preset-list"></div>
                 </details>
 

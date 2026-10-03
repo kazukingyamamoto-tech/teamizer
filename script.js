@@ -586,11 +586,6 @@ function renderPresets() {
     });
 }
 
-function savePreset() {
-    const input = document.getElementById('presetNameInput');
-    if (savePresetByName(input.value.trim())) input.value = '';
-}
-
 function applyPreset(idx) {
     const preset = memberPresets[idx];
     if (!confirm(`「${preset.name}」を今日のメンバーに適用しますか？\n(試合履歴もリセットされます)`)) return;
