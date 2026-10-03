@@ -21,6 +21,8 @@ if (!courtSettings || !Array.isArray(courtSettings.sides)) courtSettings = struc
 let memberPresets = JSON.parse(localStorage.getItem('badmintonPresets')) || [];
 // これまでに使ったメンバーと参加・待機回数 { 名前: { games, waits } }
 let memberStats = JSON.parse(localStorage.getItem('badmintonMemberStats')) || {};
+// メンバー一覧の並び順 'games'（組み合わせ回数が多い順）または 'name'（名前順）
+let memberSortOrder = localStorage.getItem('badmintonSortOrder') || 'games';
 
 // データが変わったことを現在のページに知らせる
 // （各ページが onAppDataChanged() を定義する）
@@ -37,6 +39,7 @@ function saveToLocalStorage() {
     localStorage.setItem('badmintonCourtSettings', JSON.stringify(courtSettings));
     localStorage.setItem('badmintonPresets', JSON.stringify(memberPresets));
     localStorage.setItem('badmintonMemberStats', JSON.stringify(memberStats));
+    localStorage.setItem('badmintonSortOrder', memberSortOrder);
 }
 
 // 旧「登録」機能のデータをプリセットへ引き継ぐ
@@ -74,9 +77,66 @@ function addMembers(names) {
     return { added, skipped: names.length - added };
 }
 
-// 今日のメンバーに入っていない「これまでに使ったメンバー」を名前順で返す
+// そのメンバーが組み合わせに入った回数
+function getGameCount(name) {
+    return memberStats[name] ? memberStats[name].games : 0;
+}
+
+// 現在の並び順で名前を並べ替える
+// 'games' のときは回数が多い順、同数なら名前順
+function sortMemberNames(names) {
+    return [...names].sort((a, b) => {
+        if (memberSortOrder === 'games') {
+            const diff = getGameCount(b) - getGameCount(a);
+            if (diff !== 0) return diff;
+        }
+        return a.localeCompare(b, 'ja');
+    });
+}
+
+function setMemberSortOrder(order) {
+    memberSortOrder = order;
+    saveToLocalStorage();
+    notifyDataChanged();
+}
+
+// 一覧に並び順の切り替えを差し込む（再描画は onAppDataChanged 経由）
+function createSortControl() {
+    const wrap = document.createElement('div');
+    wrap.className = 'sort-control';
+    const label = document.createElement('span');
+    label.innerText = '並び順:';
+    const select = document.createElement('select');
+    [['games', '回数が多い順'], ['name', '名前順']].forEach(([value, text]) => {
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.innerText = text;
+        if (value === memberSortOrder) opt.selected = true;
+        select.appendChild(opt);
+    });
+    select.onchange = () => setMemberSortOrder(select.value);
+    wrap.appendChild(label);
+    wrap.appendChild(select);
+    return wrap;
+}
+
+// 名前と組み合わせ回数を表示するチップを作る
+function createMemberChip(name, extraClass) {
+    const chip = document.createElement('div');
+    chip.className = 'member-chip' + (extraClass ? ' ' + extraClass : '');
+    const label = document.createElement('span');
+    label.innerText = name;
+    chip.appendChild(label);
+    const count = document.createElement('span');
+    count.className = 'chip-count';
+    count.innerText = getGameCount(name);
+    chip.appendChild(count);
+    return chip;
+}
+
+// 今日のメンバーに入っていない「これまでに使ったメンバー」を現在の並び順で返す
 function getArchivedMembers() {
-    return Object.keys(memberStats).filter(name => !members.includes(name)).sort((a, b) => a.localeCompare(b, 'ja'));
+    return sortMemberNames(Object.keys(memberStats).filter(name => !members.includes(name)));
 }
 
 // 現在のメンバーを指定名でプリセットに保存する

@@ -32,16 +32,10 @@
 
             <details class="panel-section">
                 <summary>これまでに使ったメンバー（<span id="archiveCount">0</span>名）</summary>
-                <p class="info-text">タップすると今日のメンバーに追加します。✕で履歴から削除します。</p>
+                <p class="info-text">タップすると今日のメンバーに追加します。✕で履歴から削除します。数字は組み合わせに入った回数です。</p>
+                <div id="archiveSort"></div>
                 <div id="archiveList" class="member-list"></div>
                 <button class="btn-danger" onclick="clearArchive()">今日のメンバー以外を履歴から削除</button>
-            </details>
-
-            <details class="panel-section">
-                <summary>参加・待機回数</summary>
-                <p class="info-text">「組み合わせ作成」のたびに記録されます。</p>
-                <div id="statsTable"></div>
-                <button class="btn-danger" onclick="resetStats()">回数をリセット</button>
             </details>
 
             <details class="panel-section">

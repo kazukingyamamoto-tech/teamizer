@@ -475,3 +475,34 @@ button {
 }
 
 .btn-cancel { background: #eceff1; color: #37474f; }
+
+/* 並び順の切り替えと、チップ内の回数表示 */
+.sort-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 10px 0;
+    font-size: 0.9em;
+    color: #666;
+}
+
+.sort-control select {
+    padding: 4px 8px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.member-chip .chip-count {
+    margin-left: 6px;
+    padding: 1px 6px;
+    background: #eceff1;
+    color: #546e7a;
+    border-radius: 10px;
+    font-size: 0.8em;
+}
+
+.member-chip.picked .chip-count {
+    background: rgba(255,255,255,0.3);
+    color: white;
+}

@@ -68,7 +68,6 @@
             <div class="panel-body">
                 <div class="quick-actions">
                     <button class="btn-quick" onclick="openArchivePickDialog()">＋ 履歴から追加</button>
-                    <button class="btn-quick" onclick="openPresetPickDialog()">📋 プリセットを呼び出す</button>
                     <button class="btn-quick" onclick="openPresetSaveDialog()">💾 プリセットに保存</button>
                 </div>
 
@@ -99,18 +98,10 @@
         </div>
     </dialog>
 
-    <dialog id="presetPickDialog" class="mini-dialog">
-        <h3>プリセットを呼び出す</h3>
-        <p class="dialog-note">選ぶと今日のメンバーが置き換わります。</p>
-        <div id="dlgPresetList" class="dialog-list"></div>
-        <div class="dialog-actions">
-            <button class="btn-cancel" onclick="closeDialog('presetPickDialog')">閉じる</button>
-        </div>
-    </dialog>
-
     <dialog id="archivePickDialog" class="mini-dialog">
         <h3>履歴から追加</h3>
-        <p class="dialog-note">追加したい人をタップして選んでください。</p>
+        <p class="dialog-note">追加したい人をタップして選んでください。数字は組み合わせに入った回数です。</p>
+        <div id="dlgArchiveSort"></div>
         <div id="dlgArchiveList" class="member-list"></div>
         <div class="dialog-actions">
             <button class="btn-cancel" onclick="closeDialog('archivePickDialog')">キャンセル</button>
