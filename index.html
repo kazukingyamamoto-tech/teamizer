@@ -30,8 +30,7 @@
         <div class="input-group">
             <input type="text" id="nameInput" placeholder="名前を入力" onkeypress="if(event.key==='Enter') addMember()">
             <button class="btn-add" onclick="addMember()">追加</button>
-            <button class="btn-register" onclick="registerBaseMembers()">登録</button>
-            <button class="btn-apply" onclick="applyBaseMembers()">適用</button>
+            <button class="btn-manage" onclick="toggleManagePanel(true)">⚙ メンバー管理</button>
         </div>
         <div id="memberList" class="member-list"></div>
         <div class="court-selection">
@@ -58,6 +57,72 @@
     <div class="waiting-room" id="waitingRoom" style="display:none;">
         <h3>待機メンバー</h3>
         <div id="waitingList" class="member-list"></div>
+    </div>
+
+    <div id="manageOverlay" class="overlay" style="display:none;" onclick="if(event.target === this) toggleManagePanel(false)">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>メンバー管理</h2>
+                <button class="btn-close" onclick="toggleManagePanel(false)">✕</button>
+            </div>
+            <div class="panel-body">
+                <details class="panel-section" open>
+                    <summary>現在のメンバー（<span id="panelCurrentCount">0</span>名）</summary>
+                    <p class="info-text">タップすると今日のメンバーから外します。</p>
+                    <div id="panelCurrentList" class="member-list"></div>
+                </details>
+
+                <details class="panel-section">
+                    <summary>プリセット（<span id="panelPresetCount">0</span>件）</summary>
+                    <p class="info-text">よく使うメンバー表に名前を付けて保存しておけます。</p>
+                    <div class="preset-create">
+                        <input type="text" id="presetNameInput" placeholder="プリセット名（例: 水曜メンバー）">
+                        <button class="btn-add" onclick="savePreset()">現在のメンバーを保存</button>
+                    </div>
+                    <div id="presetList" class="preset-list"></div>
+                </details>
+
+                <details class="panel-section">
+                    <summary>CSVで一括登録</summary>
+                    <p class="info-text">名前をカンマまたは改行で区切って貼り付けるか、CSVファイルを読み込みます。</p>
+                    <textarea id="csvInput" class="csv-input" rows="4" placeholder="太郎, 花子, 次郎&#10;三郎"></textarea>
+                    <div class="data-actions">
+                        <button class="btn-add" onclick="importMembersFromText()">貼り付けた内容を追加</button>
+                        <label class="btn-apply file-label">
+                            CSVファイルを読み込む
+                            <input type="file" id="csvFile" accept=".csv,text/csv,text/plain" onchange="importMembersFromFile(event)">
+                        </label>
+                    </div>
+                    <div id="csvResult" class="csv-result"></div>
+                </details>
+
+                <details class="panel-section">
+                    <summary>これまでに使ったメンバー（<span id="panelArchiveCount">0</span>名）</summary>
+                    <p class="info-text">タップすると今日のメンバーに追加します。✕で履歴から削除します。</p>
+                    <div id="archiveList" class="member-list"></div>
+                    <button class="btn-danger" onclick="clearArchive()">今日のメンバー以外を履歴から削除</button>
+                </details>
+
+                <details class="panel-section">
+                    <summary>参加・待機回数</summary>
+                    <p class="info-text">「組み合わせ作成」のたびに記録されます。</p>
+                    <div id="statsTable"></div>
+                    <button class="btn-danger" onclick="resetStats()">回数をリセット</button>
+                </details>
+
+                <details class="panel-section">
+                    <summary>データ管理</summary>
+                    <p class="info-text">メンバー・プリセット・コート設定・記録をまとめて保存／復元します。</p>
+                    <div class="data-actions">
+                        <button class="btn-add" onclick="exportData()">バックアップを書き出す</button>
+                        <label class="btn-apply file-label">
+                            バックアップを読み込む
+                            <input type="file" id="importFile" accept="application/json,.json" onchange="importData(event)">
+                        </label>
+                    </div>
+                </details>
+            </div>
+        </div>
     </div>
 
     <script src="script.js"></script>
