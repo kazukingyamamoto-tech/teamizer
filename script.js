@@ -588,19 +588,7 @@ function renderPresets() {
 
 function savePreset() {
     const input = document.getElementById('presetNameInput');
-    const name = input.value.trim();
-    if (!name) { alert("プリセット名を入力してください。"); return; }
-    if (members.length === 0) { alert("保存するメンバーがいません。"); return; }
-    const existing = memberPresets.findIndex(p => p.name === name);
-    if (existing >= 0) {
-        if (!confirm(`「${name}」は既にあります。上書きしますか？`)) return;
-        memberPresets[existing].members = [...members];
-    } else {
-        memberPresets.push({ name, members: [...members] });
-    }
-    input.value = '';
-    saveToLocalStorage();
-    renderPresets();
+    if (savePresetByName(input.value.trim())) input.value = '';
 }
 
 function applyPreset(idx) {
@@ -627,4 +615,101 @@ function deletePreset(idx) {
     memberPresets.splice(idx, 1);
     saveToLocalStorage();
     renderPresets();
+}
+
+// ==========================================
+// 9. 簡易ダイアログ（保存 / 呼び出し / 履歴から追加）
+// ==========================================
+let archivePickSelection = [];
+
+function openDialog(id) {
+    const dialog = document.getElementById(id);
+    dialog.showModal();
+    // 背景をタップしたら閉じる
+    dialog.onclick = (e) => { if (e.target === dialog) dialog.close(); };
+}
+
+function closeDialog(id) {
+    document.getElementById(id).close();
+}
+
+// --- 現在のメンバーをプリセットに保存 ---
+function openPresetSaveDialog() {
+    if (members.length === 0) { alert("保存するメンバーがいません。"); return; }
+    document.getElementById('dlgSaveCount').innerText = members.length;
+    const input = document.getElementById('dlgPresetName');
+    input.value = '';
+    openDialog('presetSaveDialog');
+    input.focus();
+}
+
+function confirmPresetSave() {
+    const input = document.getElementById('dlgPresetName');
+    if (savePresetByName(input.value.trim())) closeDialog('presetSaveDialog');
+}
+
+// --- プリセットから選択 ---
+function openPresetPickDialog() {
+    const listDiv = document.getElementById('dlgPresetList');
+    listDiv.innerHTML = '';
+    if (memberPresets.length === 0) {
+        listDiv.innerHTML = '<div class="empty-note">プリセットがありません。先に保存してください。</div>';
+    } else {
+        memberPresets.forEach((preset, idx) => {
+            const row = document.createElement('button');
+            row.className = 'dialog-row';
+            const name = document.createElement('span');
+            name.className = 'preset-name';
+            name.innerText = preset.name;
+            const count = document.createElement('span');
+            count.className = 'dialog-row-sub';
+            count.innerText = `${preset.members.length}名`;
+            row.appendChild(name);
+            row.appendChild(count);
+            row.onclick = () => {
+                applyPreset(idx);
+                closeDialog('presetPickDialog');
+            };
+            listDiv.appendChild(row);
+        });
+    }
+    openDialog('presetPickDialog');
+}
+
+// --- これまでに使ったメンバーから選んで追加 ---
+function openArchivePickDialog() {
+    archivePickSelection = [];
+    renderArchivePickList();
+    openDialog('archivePickDialog');
+}
+
+function renderArchivePickList() {
+    const listDiv = document.getElementById('dlgArchiveList');
+    const archived = getArchivedMembers();
+    listDiv.innerHTML = '';
+    if (archived.length === 0) {
+        listDiv.innerHTML = '<div class="empty-note">追加できるメンバーがいません。</div>';
+    }
+    archived.forEach(name => {
+        const chip = document.createElement('div');
+        chip.className = 'member-chip';
+        if (archivePickSelection.includes(name)) chip.classList.add('picked');
+        chip.innerText = name;
+        chip.onclick = () => {
+            if (archivePickSelection.includes(name)) {
+                archivePickSelection = archivePickSelection.filter(n => n !== name);
+            } else {
+                archivePickSelection.push(name);
+            }
+            renderArchivePickList();
+        };
+        listDiv.appendChild(chip);
+    });
+    document.getElementById('dlgArchiveCount').innerText = archivePickSelection.length;
+}
+
+function confirmArchivePick() {
+    if (archivePickSelection.length === 0) { alert("追加する人を選んでください。"); return; }
+    addMembers(archivePickSelection);
+    closeDialog('archivePickDialog');
 }

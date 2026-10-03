@@ -50,7 +50,7 @@ function applyCsvNames(names, onSuccess) {
 function renderArchive() {
     const listDiv = document.getElementById('archiveList');
     if (!listDiv) return;
-    const archived = Object.keys(memberStats).filter(name => !members.includes(name)).sort();
+    const archived = getArchivedMembers();
     document.getElementById('archiveCount').innerText = Object.keys(memberStats).length;
     listDiv.innerHTML = '';
     if (archived.length === 0) {

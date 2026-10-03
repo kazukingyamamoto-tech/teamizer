@@ -33,6 +33,11 @@
             <button class="btn-manage" onclick="toggleManagePanel(true)">⚙ メンバー管理</button>
         </div>
         <div id="memberList" class="member-list"></div>
+        <div class="quick-actions">
+            <button class="btn-quick" onclick="openArchivePickDialog()">＋ 履歴から追加</button>
+            <button class="btn-quick" onclick="openPresetPickDialog()">📋 プリセットを呼び出す</button>
+            <button class="btn-quick" onclick="openPresetSaveDialog()">💾 プリセットに保存</button>
+        </div>
         <div class="court-selection">
             <span>使用コート数:</span>
             <label><input type="radio" name="courtCount" value="1" checked onchange="onCourtCountChange()"> 1</label>
@@ -86,6 +91,35 @@
             </div>
         </div>
     </div>
+
+    <dialog id="presetSaveDialog" class="mini-dialog">
+        <h3>プリセットに保存</h3>
+        <p class="dialog-note">現在のメンバー<strong><span id="dlgSaveCount">0</span>名</strong>を保存します。</p>
+        <input type="text" id="dlgPresetName" placeholder="プリセット名（例: 水曜メンバー）" onkeypress="if(event.key==='Enter') confirmPresetSave()">
+        <div class="dialog-actions">
+            <button class="btn-cancel" onclick="closeDialog('presetSaveDialog')">キャンセル</button>
+            <button class="btn-add" onclick="confirmPresetSave()">保存</button>
+        </div>
+    </dialog>
+
+    <dialog id="presetPickDialog" class="mini-dialog">
+        <h3>プリセットを呼び出す</h3>
+        <p class="dialog-note">選ぶと今日のメンバーが置き換わります。</p>
+        <div id="dlgPresetList" class="dialog-list"></div>
+        <div class="dialog-actions">
+            <button class="btn-cancel" onclick="closeDialog('presetPickDialog')">閉じる</button>
+        </div>
+    </dialog>
+
+    <dialog id="archivePickDialog" class="mini-dialog">
+        <h3>履歴から追加</h3>
+        <p class="dialog-note">追加したい人をタップして選んでください。</p>
+        <div id="dlgArchiveList" class="member-list"></div>
+        <div class="dialog-actions">
+            <button class="btn-cancel" onclick="closeDialog('archivePickDialog')">キャンセル</button>
+            <button class="btn-add" onclick="confirmArchivePick()"><span id="dlgArchiveCount">0</span>名を追加</button>
+        </div>
+    </dialog>
 
     <script src="data.js"></script>
     <script src="script.js"></script>

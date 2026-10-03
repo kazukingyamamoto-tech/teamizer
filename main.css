@@ -398,3 +398,86 @@ button {
     border-radius: 8px;
     font-weight: bold;
 }
+
+/* ==========================================
+   クイック操作と簡易ダイアログ
+   ========================================== */
+.quick-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.btn-quick {
+    background: #eceff1;
+    color: #37474f;
+    border: 2px solid #cfd8dc;
+    font-size: 0.9em;
+    padding: 8px 12px;
+}
+
+.mini-dialog {
+    border: none;
+    border-radius: 12px;
+    padding: 20px;
+    width: 90%;
+    max-width: 420px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+
+.mini-dialog::backdrop { background: rgba(0,0,0,0.5); }
+
+.mini-dialog h3 { margin: 0 0 6px; }
+
+.dialog-note {
+    margin: 0 0 12px;
+    font-size: 0.9em;
+    color: #666;
+}
+
+.mini-dialog input[type="text"] {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 15px;
+}
+
+.dialog-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 50vh;
+    overflow-y: auto;
+    margin-bottom: 15px;
+}
+
+.dialog-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    padding: 12px;
+    background: #fafafa;
+    border: 2px solid #ddd;
+    text-align: left;
+}
+
+.dialog-row-sub { color: #666; font-weight: normal; font-size: 0.9em; }
+
+.mini-dialog .member-list { max-height: 50vh; overflow-y: auto; }
+
+.member-chip.picked {
+    background: var(--primary-color);
+    color: white;
+    border-color: #1565c0;
+}
+
+.dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-cancel { background: #eceff1; color: #37474f; }

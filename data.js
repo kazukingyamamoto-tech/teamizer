@@ -74,6 +74,28 @@ function addMembers(names) {
     return { added, skipped: names.length - added };
 }
 
+// 今日のメンバーに入っていない「これまでに使ったメンバー」を名前順で返す
+function getArchivedMembers() {
+    return Object.keys(memberStats).filter(name => !members.includes(name)).sort((a, b) => a.localeCompare(b, 'ja'));
+}
+
+// 現在のメンバーを指定名でプリセットに保存する
+// 同名があれば確認のうえ上書きする。保存したら true を返す
+function savePresetByName(name) {
+    if (!name) { alert("プリセット名を入力してください。"); return false; }
+    if (members.length === 0) { alert("保存するメンバーがいません。"); return false; }
+    const existing = memberPresets.findIndex(p => p.name === name);
+    if (existing >= 0) {
+        if (!confirm(`「${name}」は既にあります。上書きしますか？`)) return false;
+        memberPresets[existing].members = [...members];
+    } else {
+        memberPresets.push({ name, members: [...members] });
+    }
+    saveToLocalStorage();
+    notifyDataChanged();
+    return true;
+}
+
 // --- CSV一括登録 ---
 // カンマ・改行・タブ区切りの名前を取り出す（引用符とヘッダー行は除去）
 function parseNames(text) {
