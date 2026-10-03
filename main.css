@@ -341,14 +341,6 @@ button {
     font-size: 0.9em;
 }
 
-.stats-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
-.stats-table th, .stats-table td {
-    padding: 6px 8px;
-    border-bottom: 1px solid #eee;
-    text-align: left;
-}
-.stats-table th { color: #666; }
-.stats-table td:not(:first-child) { text-align: right; }
 
 /* ==========================================
    メンバー設定ページ (manage.html)
