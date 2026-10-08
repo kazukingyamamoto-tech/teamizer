@@ -172,6 +172,27 @@ function parseNames(text) {
     return names;
 }
 
+// --- 外部アプリ（Swings）からの受け取り ---
+// index.html#members=太郎%0A花子&courts=2 のように渡された参加者を「今日のメンバー」にする。
+// 名前は # 以降に入れるので、サーバーには送られない。
+// 読み込んだ人数とコート数を返す（何も渡されていなければ null）
+function importFromLocationHash() {
+    const params = new URLSearchParams(location.hash.slice(1));
+    if (!params.has('members')) return null;
+
+    const names = parseNames(params.get('members') || '');
+    // 読み込んだら URL から消して、再読み込みで二重に取り込まないようにする
+    history.replaceState(null, '', location.pathname + location.search);
+    if (names.length === 0) return null;
+
+    members = names;
+    names.forEach(touchMember);
+    const courts = parseInt(params.get('courts'), 10);
+    if (courts >= 1) courtSettings.courtCount = Math.min(courts, courtSettings.sides.length);
+    saveToLocalStorage();
+    return { count: names.length, courts: courtSettings.courtCount };
+}
+
 // --- データ管理（バックアップ／復元） ---
 function exportData() {
     const data = {

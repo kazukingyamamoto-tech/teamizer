@@ -15,11 +15,21 @@ const alarmAudio = new Audio('alarm.mp3');
 
 window.onload = () => {
     migrateLegacyData();
+    const imported = importFromLocationHash();
+    if (imported) showImportNotice(imported);
     renderMasterList();
     updateTimerDisplay();
     updateDrawButton();
     initCourtSettings();
 };
+
+// Swings から参加者を受け取ったことを知らせる
+function showImportNotice({ count, courts }) {
+    const notice = document.createElement('div');
+    notice.className = 'info-text import-notice';
+    notice.innerText = `Swingsから参加者${count}名を読み込みました（コート${courts}面）`;
+    document.querySelector('.config-section').prepend(notice);
+}
 
 // データ変更時にこのページを描き直す（data.js から呼ばれる）
 function onAppDataChanged() {
