@@ -73,9 +73,31 @@ document.addEventListener('visibilitychange', async () => {
 // ==========================================
 // 3. 音声再生機能
 // ==========================================
+// LINE 内ブラウザなどは、タップ直後でないと音を鳴らせない（自動再生の制限）。
+// スタートを押した瞬間に無音で一度再生して止めておくと、
+// その音声は再生を許可されたものになり、タイマー終了時にも鳴らせる。
+let alarmUnlocked = false;
+function unlockAlarm() {
+    if (alarmUnlocked) return;
+    alarmAudio.muted = true;
+    alarmAudio.play()
+        .then(() => {
+            alarmAudio.pause();
+            alarmAudio.currentTime = 0;
+            alarmUnlocked = true;
+        })
+        .catch(e => console.log("音声の準備に失敗:", e))
+        .finally(() => { alarmAudio.muted = false; });
+}
+
 function playAlarm() {
+    alarmAudio.muted = false;
     alarmAudio.currentTime = 0;
-    alarmAudio.play().catch(e => console.log("再生失敗:", e));
+    alarmAudio.play().catch(e => {
+        console.log("再生失敗:", e);
+        // 音が出せなかったときは、振動できる端末（Android など）なら振動で知らせる
+        if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500]);
+    });
     setTimeout(() => stopAlarm(), 10000); 
 }
 
@@ -482,6 +504,7 @@ function toggleTimer() {
     if (isRunning) {
         stopTimer();
     } else {
+        unlockAlarm();
         isRunning = true;
         btn.innerText = "一時停止";
         btn.style.backgroundColor = "#ff5722";
