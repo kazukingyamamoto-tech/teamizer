@@ -508,3 +508,30 @@ button {
     color: #0f766e;
     font-weight: bold;
 }
+
+/* ==========================================
+   練習メニュー
+   ========================================== */
+.menu-container { width: 100%; max-width: 600px; margin-bottom: 10px; }
+.btn-practice { background-color: #00796b; }
+.menu-section { background: white; padding: 15px; border-radius: 0 0 12px 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+.menu-options { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 8px; font-size: 0.95em; }
+.menu-options label { cursor: pointer; }
+.menu-themes { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.theme-chip { padding: 4px 10px; border-radius: 16px; border: 1px solid #b2dfdb; background: white; color: #00796b; font-size: 0.85em; }
+.theme-chip.on { background: #00796b; color: white; border-color: #00796b; }
+.menu-hint { font-size: 0.8em; color: #777; margin: 4px 0; }
+.menu-card { border: 1px solid #e0e0e0; border-radius: 10px; padding: 12px; margin-top: 10px; text-align: left; }
+.menu-card-label { font-size: 0.75em; color: #00796b; font-weight: bold; }
+.menu-name { margin: 2px 0 4px; font-size: 1.2em; }
+.menu-meta { font-size: 0.8em; color: #777; margin: 0 0 6px; }
+.menu-summary { margin: 0 0 6px; }
+.menu-note { white-space: pre-wrap; font-size: 0.9em; background: #f5f5f5; padding: 6px 8px; border-radius: 6px; margin: 4px 0; }
+.menu-note-link { display: block; margin: 4px 0; font-size: 0.9em; color: #00796b; word-break: break-all; }
+.menu-note-link.youtube { color: #d32f2f; }
+.menu-note-link.instagram { color: #c2185b; }
+.menu-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 8px; }
+.menu-link { font-size: 0.85em; color: #00796b; }
+.menu-error { color: #d32f2f; margin: 4px 0; }
+.menu-status { font-size: 0.75em; color: #999; margin: 10px 0 0; }
+.btn-text { background: none; border: none; color: #00796b; text-decoration: underline; font-size: 1em; padding: 0; cursor: pointer; }

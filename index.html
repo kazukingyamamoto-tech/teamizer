@@ -26,6 +26,27 @@
         </div>
     </div>
 
+    <div class="menu-container">
+        <button class="btn-menu btn-practice" onclick="toggleMenuView()">🏸 練習メニュー表示/非表示</button>
+        <div id="menuSection" class="menu-section" style="display: none;">
+            <div class="menu-options">
+                <span>選び方:</span>
+                <label><input type="radio" name="menuMode" value="theme" onchange="setMenuMode('theme')" checked> テーマで選ぶ</label>
+                <label><input type="radio" name="menuMode" value="next" onchange="setMenuMode('next')"> 次のメニューから</label>
+            </div>
+            <div class="menu-options">
+                <span>単位:</span>
+                <label><input type="radio" name="menuScope" value="all" onchange="setMenuScope('all')" checked> 全体で1つ</label>
+                <label><input type="radio" name="menuScope" value="court" onchange="setMenuScope('court')"> コートごと</label>
+            </div>
+            <div id="menuThemes" class="menu-themes"></div>
+            <p id="menuNextHint" class="menu-hint"></p>
+            <button class="btn-draw" onclick="drawMenu()">メニューを抽選！</button>
+            <div id="menuResults"></div>
+            <p class="menu-status"><span id="menuStatus"></span> <button class="btn-text" onclick="resetDrawnMenus()">今日の記録をリセット</button></p>
+        </div>
+    </div>
+
     <div class="config-section">
         <div class="input-group">
             <input type="text" id="nameInput" placeholder="名前を入力" onkeypress="if(event.key==='Enter') addMember()">
@@ -111,5 +132,6 @@
 
     <script src="data.js"></script>
     <script src="script.js"></script>
+    <script src="menu.js"></script>
 </body>
 </html>
