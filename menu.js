@@ -266,11 +266,80 @@ function noteElement(n) {
         p.innerText = n.text;
         return p;
     }
+    if (n.type === 'youtube') {
+        const yt = parseYouTube(n.text);
+        if (yt) return videoPlaceholder(
+            `https://i.ytimg.com/vi/${yt.id}/hqdefault.jpg`,
+            `https://www.youtube-nocookie.com/embed/${yt.id}?autoplay=1&playsinline=1&rel=0` + (yt.start ? `&start=${yt.start}` : ''),
+            'video-frame',
+        );
+    }
+    if (n.type === 'instagram') {
+        const code = parseInstagram(n.text);
+        if (code) return videoPlaceholder(null, `https://www.instagram.com/${code.kind}/${code.id}/embed`, 'instagram-frame', '▶ Instagramのリールを見る');
+    }
     const a = document.createElement('a');
     a.href = n.text;
     a.target = '_blank';
     a.rel = 'noopener';
     a.className = 'menu-note-link ' + n.type;
-    a.innerText = n.type === 'youtube' ? '▶ YouTubeで見る' : n.type === 'instagram' ? '▶ Instagramで見る' : n.text;
+    a.innerText = n.text;
     return a;
+}
+
+// タップするまではサムネイル（またはボタン）だけを出し、タップでその場にプレーヤーを埋め込む
+function videoPlaceholder(thumbnail, embedUrl, frameClass, label) {
+    const box = document.createElement('div');
+    box.className = 'menu-video';
+    const btn = document.createElement('button');
+    btn.className = thumbnail ? 'video-thumb' : 'btn-quick video-open';
+    if (thumbnail) {
+        const img = document.createElement('img');
+        img.src = thumbnail;
+        img.loading = 'lazy';
+        img.alt = '';
+        btn.appendChild(img);
+        const play = document.createElement('span');
+        play.className = 'video-play';
+        play.innerText = '▶';
+        btn.appendChild(play);
+    } else {
+        btn.innerText = label;
+    }
+    btn.onclick = () => {
+        const frame = document.createElement('iframe');
+        frame.src = embedUrl;
+        frame.className = frameClass;
+        frame.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+        frame.allowFullscreen = true;
+        box.replaceChildren(frame);
+    };
+    box.appendChild(btn);
+    return box;
+}
+
+// YouTube の URL から動画IDと開始秒を取り出す（youtu.be / watch / shorts / live / embed、t=90 や t=1m30s）
+function parseYouTube(url) {
+    let u;
+    try { u = new URL(url); } catch { return null; }
+    const host = u.hostname.replace(/^(www|m|music)\./, '');
+    let id = null;
+    if (host === 'youtu.be') id = u.pathname.split('/')[1];
+    else if (host === 'youtube.com') {
+        id = u.pathname === '/watch' ? u.searchParams.get('v') : (u.pathname.match(/^\/(shorts|live|embed)\/([^/?#]+)/) || [])[2];
+    }
+    if (!id || !/^[A-Za-z0-9_-]{11}$/.test(id)) return null;
+    const t = u.searchParams.get('t') || u.searchParams.get('start') || '';
+    const m = t.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/);
+    const start = m ? (Number(m[1] || 0) * 3600 + Number(m[2] || 0) * 60 + Number(m[3] || 0)) : 0;
+    return { id, start };
+}
+
+// Instagram の URL からリール / 投稿のコードを取り出す
+function parseInstagram(url) {
+    let u;
+    try { u = new URL(url); } catch { return null; }
+    const m = u.pathname.match(/^\/(reel|reels|p|tv)\/([A-Za-z0-9_-]+)/);
+    if (!m) return null;
+    return { kind: m[1] === 'reels' ? 'reel' : m[1], id: m[2] };
 }
