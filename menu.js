@@ -20,7 +20,8 @@ let menuState = loadMenuState();
 let selectedThemes = new Set();
 
 function loadMenuState() {
-    const fallback = { mode: 'theme', scope: 'all', current: null, courtCurrent: [], drawn: { date: '', ids: [] } };
+    // last: 最後の抽選結果。ほかのページに移って戻ってきても同じ結果を出すために保存する
+    const fallback = { mode: 'theme', scope: 'all', current: null, courtCurrent: [], drawn: { date: '', ids: [] }, last: null };
     try {
         return { ...fallback, ...JSON.parse(localStorage.getItem(MENU_STATE_KEY)) };
     } catch {
@@ -48,6 +49,7 @@ async function loadMenus() {
         if (cached) { menus = cached.menus; menusFetchedAt = cached.fetchedAt; }
     } catch { /* 保存がなければ取りに行く */ }
     renderMenuSection();
+    restoreLastResults();
 
     try {
         const res = await fetch(MENUS_URL);
@@ -60,6 +62,7 @@ async function loadMenus() {
         console.log('メニューの読み込みに失敗（保存済みの一覧を使います）:', e);
     }
     renderMenuSection();
+    restoreLastResults();
 }
 
 function toggleMenuView() {
@@ -124,15 +127,28 @@ function drawMenu() {
         });
     }
     results.forEach(r => { if (r.menu && !drawnToday().includes(r.menu.id)) drawnToday().push(r.menu.id); });
+    menuState.last = {
+        date: todayKey(),
+        results: results.map(r => ({ label: r.label, menuId: r.menu ? r.menu.id : null, error: r.error || null, suggestTheme: !!r.suggestTheme })),
+    };
     saveMenuState();
     renderMenuSection();
     renderMenuResults(results);
+}
+
+// 保存してある最後の抽選結果を出し直す（その日のものだけ）
+function restoreLastResults() {
+    const last = menuState.last;
+    if (!last || last.date !== todayKey() || menus.length === 0) return false;
+    renderMenuResults(last.results.map(r => ({ label: r.label, menu: r.menuId ? menuById(r.menuId) : null, error: r.error || 'このメニューは削除されました。', suggestTheme: r.suggestTheme })));
+    return true;
 }
 
 function resetDrawnMenus() {
     menuState.drawn = { date: todayKey(), ids: [] };
     menuState.current = null;
     menuState.courtCurrent = [];
+    menuState.last = null;
     saveMenuState();
     document.getElementById('menuResults').innerHTML = '';
     renderMenuSection();
@@ -239,7 +255,21 @@ function menuCardBody(m) {
         body.appendChild(summary);
     }
 
-    m.notes.forEach(n => body.appendChild(noteElement(n)));
+    if (m.notes.length > 0) {
+        const heading = document.createElement('p');
+        heading.className = 'menu-notes-title';
+        heading.innerText = '説明';
+        body.appendChild(heading);
+        const list = document.createElement('div');
+        list.className = 'menu-notes';
+        m.notes.forEach(n => {
+            const cell = document.createElement('div');
+            cell.className = 'menu-note-cell';
+            cell.appendChild(noteElement(n));
+            list.appendChild(cell);
+        });
+        body.appendChild(list);
+    }
 
     const actions = document.createElement('div');
     actions.className = 'menu-actions';
@@ -253,7 +283,7 @@ function menuCardBody(m) {
     edit.href = SWINGS_MENU_URL + encodeURIComponent(m.id);
     edit.target = '_blank';
     edit.rel = 'noopener';
-    edit.innerText = 'Swingsで説明を見る・書き足す';
+    edit.innerText = 'Swingsで説明を書き足す';
     actions.appendChild(edit);
     body.appendChild(actions);
     return body;
@@ -343,3 +373,11 @@ function parseInstagram(url) {
     if (!m) return null;
     return { kind: m[1] === 'reels' ? 'reel' : m[1], id: m[2] };
 }
+
+// 前回の抽選結果がその日のものなら、開いた時点でメニュー欄を開いて結果を出しておく
+window.addEventListener('load', () => {
+    if (menuState.last && menuState.last.date === todayKey()) {
+        document.getElementById('menuSection').style.display = 'block';
+        loadMenus();
+    }
+});
